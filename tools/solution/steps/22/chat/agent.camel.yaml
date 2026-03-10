@@ -1,0 +1,28 @@
+- onException:
+    steps:
+      - setBody:
+          simple:
+            expression: "Oops, something went wrong: ${exception.message}"
+    exception:
+      - java.lang.Exception
+    handled:
+      constant:
+        expression: "true"
+- route:
+    from:
+      uri: platform-http
+      parameters:
+        path: /camel/chat
+      steps:
+        - convertBodyTo:
+            type: String
+        - setHeader:
+            expression:
+              simple:
+                expression: "1"
+            name: CamelLangChain4jAgentMemoryId
+        - to:
+            uri: langchain4j-agent:test
+            parameters:
+              agent: "#myagent"
+        - log: ${body}

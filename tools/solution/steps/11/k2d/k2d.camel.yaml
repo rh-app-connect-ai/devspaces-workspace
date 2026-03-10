@@ -1,0 +1,37 @@
+- route:
+    id: route-3093
+    description: Kafka to Discord
+    from:
+      id: from-2541
+      description: Kafka
+      uri: kafka
+      parameters:
+        brokers: my-cluster-kafka-bootstrap:9092
+        topic: myroom
+      steps:
+        - filter:
+            id: filter-1773
+            steps:
+              - stop:
+                  id: stop-2721
+            jq:
+              expression: .source | test("discord")
+              source: common
+        - step:
+            id: kaoto-datamapper-5e9ba87a
+            steps:
+              - to:
+                  id: kaoto-datamapper-xslt-4266
+                  uri: xslt-saxon:kaoto-datamapper-5e9ba87a.xsl
+                  parameters:
+                    failOnNullBody: false
+        - log:
+            message: ${body}
+        - to:
+            description: Discord
+            uri: kamelet
+            parameters:
+              channel: "{{discord.room}}"
+              templateId: discord-sink
+              token: "{{discord.token}}"
+      variableReceive: common

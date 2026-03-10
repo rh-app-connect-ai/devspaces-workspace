@@ -1,0 +1,305 @@
+# - route:
+#     description: Bot process
+#     from:
+#       uri: platform-http
+#       parameters:
+#         path: /webhook
+#       steps:
+#         - log:
+#             message: incoming is ${body}
+
+        # - setBody:
+        #     expression:
+        #       simple: >-
+        #         {
+        #           "text": "dummy response"
+        #         }
+
+
+
+- route:
+    description: RocketChat to Agent
+    from:
+      description: RocketChat
+      uri: platform-http
+      parameters:
+        path: /ai-support
+      steps:
+        - log:
+            message: incoming is ${body}
+        # - filter:
+        #     steps:
+        #       - log:
+        #           message: in the filter
+        #       - stop:
+        #           id: stop-2721
+        #     jq:
+        #       expression: .channel_name | test("ai") | not
+
+        # - setBody:
+        #     expression:
+        #       simple: >-
+        #         {
+        #           "text": "Here's your invoice:",
+        #           "attachments": [
+        #             {
+        #               "title": "Invoice 61356291 PDF",
+        #               "title_link": "https://s3-openshift-storage.apps.cluster-tsmhd.dynamic.redhatworkshops.io/invoices/invoice_61356291.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20260303T231039Z&X-Amz-SignedHeaders=host&X-Amz-Credential=Vwd6LvfsLa8MksZwZ56G%2F20260303%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Expires=3600&X-Amz-Signature=d3a0122d733b76e5acb15c7753a451c51d356c101005f16c21b682cb78ebc814",
+                #       "title_link": "https://s3-openshift-storage.apps.cluster-tsmhd.dynamic.redhatworkshops.io/invoices/invoice_61356291.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20260303T232747Z&X-Amz-SignedHeaders=host&X-Amz-Credential=Vwd6LvfsLa8MksZwZ56G%2F20260303%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Expires=3600&X-Amz-Signature=3f778e240943e2d0ad8a59b1e32082c4591a457e33c353f5f23d96df1e8fd8b0",
+        #               "text": "Click to view or download the PDF (expires in 1 hour)",
+        #               "color": "#2f9e44"
+        #             }
+        #           ]
+        #         }
+
+                # {
+                #   "text": "Here's your invoice:",
+                #   "attachments": [
+                #     {
+                #       "title": "Invoice 61356291 PDF",
+                #       "title_link": "https://s3-openshift-storage.apps.cluster-tsmhd.dynamic.redhatworkshops.io/invoices/invoice_61356291.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20260303T232747Z&X-Amz-SignedHeaders=host&X-Amz-Credential=Vwd6LvfsLa8MksZwZ56G%2F20260303%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Expires=3600&X-Amz-Signature=3f778e240943e2d0ad8a59b1e32082c4591a457e33c353f5f23d96df1e8fd8b0",
+                #       "text": "Click to view or download the PDF (expires in 1 hour)",
+                #       "color": "#2f9e44"
+                #     }
+                #   ]
+                # }
+
+
+        # - setBody:
+        #     expression:
+        #       simple: >-
+        #         {
+        #           "text": "Here's your invoice:",
+        #           "attachments": [
+        #             {
+        #               "title": "Invoice 61356291 PDF",
+        #               "title_link": "https://s3-openshift-storage.apps.cluster-tsmhd.dynamic.redhatworkshops.io/invoices/invoice_61356291.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20260303T233736Z&X-Amz-SignedHeaders=host&X-Amz-Credential=Vwd6LvfsLa8MksZwZ56G%2F20260303%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Expires=3600&X-Amz-Signature=9128eb97720257e0c185d2f159ce81de99632aeaf0c7de3f3750fb77d8339118",
+        #               "text": "Click to view or download the PDF (expires in 1 hour)",
+        #               "color": "#2f9e44"
+        #             }
+        #           ]
+        #         }
+
+        # - setBody:
+        #     expression:
+        #       simple: >-
+        #         {
+        #           "text": "This is a test"
+        #         }
+
+        # - stop: {}
+
+        - setBody:
+            expression:
+              jq:  .text
+
+
+        - to:
+            uri: direct:agent
+        - log:
+            message: ${body}
+
+        # - removeHeaders:
+        #     pattern: "*"
+
+        # - setBody:
+        #     expression:
+        #       simple: >-
+        #         {
+        #           "text": "${body.trim()}"
+        #         }
+
+        # - log:
+        #     message: ${body}
+
+
+        # - to:
+        #     description: RocketChat
+        #     uri: kamelet
+        #     parameters:
+        #       templateId: rocketchat-sink
+        #       token: "{{rocketchat.token}}"
+        #       userid: "{{rocketchat.userid}}"        
+
+# - route:
+#     description: Agent test
+#     from:
+#       uri: timer:test
+#       parameters:
+#         repeatCount: 1
+#       steps:
+#         - setBody:
+#             expression:
+#               simple: >-
+#                 {
+#                   "channel": "ai",
+#                   "text": "bot test",
+#                   "user_name":"ai-bot"
+#                 }
+#         - log:
+#             message: ${body}
+#         - to:
+#             description: RocketChat
+#             uri: kamelet
+#             parameters:
+#               templateId: rocketchat-sink
+#               token: "{{rocketchat.token}}"
+#               userid: "{{rocketchat.userid}}"        
+
+
+
+# - route:
+#     id: route-2475
+#     from:
+#       uri: platform-http
+#       parameters:
+#         path: /camel/chat
+
+- route:
+    from:
+      uri: direct:agent
+      steps:
+        - convertBodyTo:
+            type: String
+        - setHeader:
+            id: setHeader-1975-3488
+            name: CamelLangChain4jAgentSystemMessage
+            simple:
+              expression: >-
+                /no_think
+
+                You are a helpful assisstant.
+
+                You help updating invoices by analysing the user prompt,
+                modifying an existing invoice metadata and updating its content.
+
+                Updating invoices is a multi step process:
+                  1) First you obtain the metadata of an invoice
+                  2) Then you evaluate and apply the changes requested
+                  3) Lastly, you update the invoice metadata
+
+
+                IMPORTANT:
+                - When responding, always do it in JSON format, following one of the patterns listed below.
+                - All JSON responses compacted in 1 line (no pretty-print).
+
+                - Pattern 1:
+
+                  When providing URLs to PDFs, please wrap them in the following JSON structure (format in one line):
+
+                      {
+                        "text": "Here's your invoice:",
+                        "attachments": [
+                          {
+                            "title": "Invoice <invoice_number> PDF",
+                            "title_link": "<invoice_url>",
+                            "text": "Click to view or download the PDF (expires in 1 hour)",
+                            "color": "#2f9e44"
+                          }
+                        ]
+                      }
+
+                - Pattern 2:
+
+                  Otherwise, use the format that follows (format in one line):
+
+                      {
+                        "text": "<your_response>"
+                      }
+
+                IMPORTANT: Always compact the JSON response in 1 line (no pretty-print) to avoid new line characters.
+
+                Use the tools that are available to you.
+        - setHeader:
+            expression:
+              simple:
+                expression: "1"
+            name: CamelLangChain4jAgentMemoryId
+        - doTry:
+            id: doTry-3539
+            steps:
+              - to:
+                  uri: langchain4j-agent
+                  parameters:
+                    agent: "#myagent"
+                    agentId: test
+                    tags: all
+            doCatch:
+              - id: doCatch-1552
+                steps:
+                  - setBody:
+                      simple:
+                        expression: "Oops, something went wrong: ${exception.message} "
+                exception:
+                  - java.lang.Exception
+        # - log: ${body}
+
+        - setBody:
+            expression:
+              simple: ${body.trim()}
+
+        - unmarshal:
+            json: {}
+
+        - marshal:
+            json: {}
+
+        - log: ${body}
+
+- route:
+    id: route-3215
+    description: Retrieves the PDF url of an invoice
+    from:
+      uri: langchain4j-tools
+      parameters:
+        description: Retrieves the PDF url of an invoice
+        parameter.id: string
+        tags: all
+        toolId: getInvoicePDFurl
+      steps:
+        - setVariable:
+            description: set file name
+            expression:
+              simple:
+                expression: invoice_${header.id}.pdf
+            name: filename
+        - to:
+            id: to-1810
+            uri: direct
+            parameters:
+              name: get-pdf-url
+
+- route:
+    id: route-3215-7260
+    description: Retrieves the PDF url of an invoice
+    from:
+      uri: direct
+      parameters:
+        name: get-pdf-url
+      steps:
+        - removeHeaders:
+            disabled: false
+            pattern: "*"
+        - to:
+            uri: aws2-s3
+            parameters:
+              # accessKey: accesskey
+              autoCreateBucket: true
+              bucketNameOrArn: invoices
+              forcePathStyle: true
+              keyName: ${variable.filename}
+              operation: createDownloadLink
+              overrideEndpoint: true
+              region: us-east-1
+              # secretKey: secretkey
+              # uriEndpointOverride: http://localhost:4566
+              amazonS3Presigner: "#presigner"
+
+        - setBody:
+            simple:
+              expression: ${replace('4566','4566/invoices')}
+        - log:
+            id: log-2643-4075
+            message: "link: ${body}"
+      id: from-1873
+

@@ -1,0 +1,72 @@
+#! /bin/bash
+# set -x
+
+# Pretty error function
+die() {
+  printf '\n\033[0;31mERROR:\033[0m %s\n\n' "$*" >&2
+  exit 1
+}
+
+info() {
+  printf '\033[0;34mINFO:\033[0m %s\n' "$*"
+}
+
+BASE=$PROJECT_SOURCE
+LAB=$BASE/lab
+TOOLS=$BASE/tools
+FF=$TOOLS/solution/steps
+
+# Return chapter details when no argument is passed (no chapter requested)
+if [ ! "$1" ]; then
+
+  # Exception case is step 6
+  STEP=$(< $TOOLS/scripts/current)
+
+  # For step 6 exception, run special case deploy
+  if [ $STEP -eq 6 ]; then
+
+    # Run special case deploy
+    source /projects/workshop/tools/scripts/step6/deploy
+
+    exit
+  fi
+
+  die "You need to provide a directory with sources to deploy."
+fi
+
+# to ensure all hidden files & dirs are deleted (.camel) we need to change directory and return
+if [ ! -d "$LAB/$1" ]; then
+  die "The dir needs to exist in your 'lab' directory."
+fi
+
+
+# 1. Initialize arrays to sort arguments
+property_files=()
+
+# 2. Loop through all arguments passed to the script
+for arg in "$@"; do
+    case "$arg" in
+        # If the argument ends in .properties, add it to the properties array
+        *.properties)
+            property_files+=("$arg")
+            ;;
+    esac
+done
+
+# 3. Initialize the flag variable
+property_flag=""
+
+# 4. Check if the property_files array is not empty
+if [ ${#property_files[@]} -gt 0 ]; then
+    # 5. Join all property files with a comma
+    joined_files=$(IFS=,; echo "${property_files[*]}")
+fi
+
+# echo --property quarkus.config.locations=$joined_files
+
+camel kubernetes run $1/* \
+--name=$1 \
+--local-kamelet-dir=$BASE/support/kamelets \
+--cluster-type=openshift \
+--property quarkus.config.locations=$joined_files \
+${@:2}

@@ -1,0 +1,48 @@
+#! /bin/bash
+# set -x
+
+# Pretty error function
+die() {
+  printf '\n\033[0;31mERROR:\033[0m %s\n\n' "$*" >&2
+  exit 1
+}
+
+info() {
+  printf '\033[0;34mINFO:\033[0m %s\n' "$*"
+}
+
+BASE=$PROJECT_SOURCE
+LAB=$BASE/lab
+TOOLS=$BASE/tools
+FF=$TOOLS/solution/steps
+
+
+# Return chapter details when no argument is passed (no chapter requested)
+if [ ! "$1" ]; then
+
+  # Exception case is step 6
+  STEP=$(< $TOOLS/scripts/current)
+
+  # For step 6 exception, run special case undeploy
+  if [ $STEP -eq 6 ]; then
+
+    # Run special case
+    source /projects/workshop/tools/scripts/step6/undeploy
+
+    exit
+  fi
+
+  die "You need to provide a directory with original sources to undeploy."
+fi
+
+
+
+# to ensure all hidden files & dirs are deleted (.camel) we need to change directory and return
+if [ ! -d "$LAB/$1" ]; then
+  echo "The dir needs to exit in your 'lab' directory."
+  exit
+fi
+
+# Deploy with Kubernetes plugin
+cd $LAB/$1
+camel kubernetes delete --name $1

@@ -1,0 +1,4 @@
+.camel-jbang
+.camel-jbang-run
+.DS_Store
+tools/test/flows/application.properties

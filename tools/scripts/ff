@@ -1,0 +1,10 @@
+#! /bin/bash
+# set -x
+
+BASE=$PROJECT_SOURCE
+CURRENT=`head $BASE/tools/scripts/current`
+
+# echo "fast forward..."
+echo -e "\033[33mfast forward...\033[0m"
+echo "step $(($CURRENT)) done."
+step "$(($CURRENT+1))"

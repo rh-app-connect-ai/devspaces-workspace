@@ -1,0 +1,47 @@
+#!/bin/bash
+set -euo pipefail
+
+# Load common variables
+echo "Running step 6 undeployment"
+
+# Ensure work is done from lab directory
+cd /projects/workshop/lab
+
+
+# m2k undeployment
+if oc get deploy m2k &> /dev/null; then
+    info "[m2k] undeploying..."
+    labundeploy m2k
+    info "[m2k] undeployed."
+else
+    info "[m2k] already absent - skipping"
+fi
+
+# r2k undeployment
+if oc get deploy r2k &> /dev/null; then
+    info "[r2k] undeploying..."
+    labundeploy r2k
+    info "[r2k] undeployed."
+else
+    info "[r2k] already absent - skipping"
+fi
+
+# k2m undeployment
+if oc get deploy k2m &> /dev/null; then
+    info "[k2m] undeploying..."
+    labundeploy k2m
+    info "[k2m] undeployed."
+else
+    info "[k2m] already absent - skipping"
+fi
+
+# k2r undeployment
+if oc get deploy k2r &> /dev/null; then
+    info "[k2r] undeploying..."
+    labundeploy k2r
+    info "[k2r] undeployed."
+else
+    info "[k2r] already absent - skipping"
+fi
+
+info "All done."

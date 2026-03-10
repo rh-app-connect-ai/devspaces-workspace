@@ -1,0 +1,29 @@
+{
+	"settings": {
+		"kaoto.colorTheme": "light",
+		"telemetry.feedback.enabled": false,
+		"redhat.telemetry.enabled": false,
+		"security.workspace.trust.enabled": false,
+		"security.extension.trust.enabled": false,
+		"security.workspace.trust.banner": "never",
+		"terminal.integrated.ignoreBracketedPasteMode": true,
+		"git.enabled": false,
+		"files.exclude": {
+			".vscode": true,
+			"support": true,
+			"tools": true,
+			".code-workspace": true,
+			".*": true,
+			"README.md": true,
+			"**/.gitignore": true,
+			"**/.camel-jbang": true,
+			"**/.camel-jbang-run": true
+		}
+	},
+	"folders": [
+		{
+			"name": "workshop",
+			"path": "/projects/workshop"
+		}
+	]
+}

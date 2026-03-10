@@ -1,0 +1,124 @@
+The following folder containes a set of helper scripts to run load tests.
+
+IMPORTANT
+=========
+There are 2 types of load tests:
+ 1) One type to validate the cluster is healthy and ready for students.
+    This type is clean and non-intrusive. It leaves no traces and workspaces are untouched.
+    This type of test is good to run for every environment provisioned, prior to the session.
+
+ 2) Another type to run a full blown user simulation
+    This type is dirty. It is intrusive, it simulates users executing Camel JBang to build and deploy flows. It uses workspaces and leaves traces.
+    This type of test is good to run after working on workshop updates and patches.
+
+
+How to run Type 1
+=================
+The load test should be run in the following order:
+
+1. build-test.sh
+2. start-test.sh
+3. Manual test message from Matrix (test flow Matrix -> RocketChat)
+4. send-rc-messages.sh (test flow RocketChat -> Matrix)
+5. stop-test.sh
+6. clean-test.sh
+
+
+How to run Type 2
+=================
+1. Make sure all DevWorkspaces are running.
+  > use [ws-start-all.sh] to start all workspaces.
+  > use [health.sh] to check if all workspaces are running
+
+2. Make sure Camel CLI is installed in all workspaces.
+  > use [fix-camel.sh] to find and fix camel.
+
+3. To simulate all users simultaneously, run:
+  > sim-users.sh all
+  It launches build & deploy (4 flows) in each user workspace (all users).
+
+4. When finished, manually test the flows from some users.
+
+5. You can undeploy all flows by editing [sim-users] to 'labundeploy' and running the script again.
+
+
+##################################
+# Type 1 scripts
+##################################
+
+[config.sh]
+============
+Obtains and configures common parameters for all scripts, like:
+ - number of users in the cluster
+ - host test namespace
+ - host test user
+ - host test room
+ - others
+
+[health.sh]
+============
+This script can be run standalone and it will perform a general health check for:
+ - Matrix system.
+ - RocketChat system.
+ - DevWorkspaces for all users.
+ - Kafka brokers for all users.
+
+This health check is also automatically run by:
+ > build-test.sh
+ > start-test.sh
+
+[build-test.sh]
+===============
+Uses Camel JBang to build and deploy 4 flows (based on Lab 3): m2k, r2k, k2m, k2r.
+Building the flows creates the test images (used later to scale up in all user namespaces).
+
+[start-test.sh]
+===============
+Script responsible to re-use the test images and deploy them in all available user namespaces.
+It essentially deploys the 4 flows in each available user namespace to simulate user load in the cluster.
+It does this ensuring all worker nodes can authenticate to the image registry, obtain the flow image and deploy it in any scheduled worker node.
+
+[send-rc-message.sh]
+====================
+This script tests the RocketChat to Matrix flows.
+We only use 1 test user for the load test, making it not possible to trigger all rocketchat webhooks.
+For that reason we simulate all users using this script that calls directly each one of the webhooks from all different user namespaces.
+
+[stop-test.sh]
+==============
+Deletes all deployments from all user namespaces (except the host namespace for testing) to clean the cluster from testing artifacts.
+
+[clean-test.sh]
+===============
+Uses Camel JBang to clean the 4 flows deployed in the host test namespaces. This ensures all the the artifacts are properly deleted: route,service,pod,deployment, etc.
+
+[ws-fix-failed.sh]
+==================
+After a cluster is provisioned, it may happen that DevWorkspaces are not in healthy state, and show as "Failed". This script will find them, fix them and start them.
+
+[ws-start-all.sh]
+=================
+This script starts all DevWorspaces that are not already in "Running" state.
+It runs first 'ws-fix-failed.sh' to ensure unhealthy workspaces are recovered.
+Then it starts also workspaces in 'Stopped' status.
+
+
+
+##################################
+# Type 2 scripts
+##################################
+
+[fix-camel.sh]
+==============
+Sometimes the DevWorkspace provisioning fails to install properly the Camel CLI.
+This script will test if the command is available, if not, it will install the Camel CLI.
+
+[sim-users.sh]
+==============
+Simulates a user building and deploying flows from step 6 (Matrix <=> Kafka <=> RocketChat).
+You can simulate one user with "sim-user.sh N" (N the user number), or all users with "sim-users.sh all".
+Requires all workspaces to be up and running. You can use Type 1 [ws-start-all.sh] to ensure all workspaces are fixed and running before you initiate the simulation.
+
+[report.sh]
+===========
+Launch report for last simulation run. Also automatically executed with running [sim-users.sh].
