@@ -30,8 +30,8 @@ camel.component.aws2-s3.uriEndpointOverride=s3_endpoint
 
 
 
-
-
+forage.amend.agent.base.url=maas_url
+forage.amend.agent.api.key=maas_key
 
 # Helpdesk credentials
 helpdesk.username=helpdesk_username
