@@ -1,3 +1,5 @@
+//DEPS dev.langchain4j:langchain4j-open-ai:0.33.0
+
 //DEPS com.vladsch.flexmark:flexmark-all:0.64.8
 //DEPS com.itextpdf:html2pdf:6.1.0
 
@@ -9,6 +11,15 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.PropertyInject;
 import org.apache.camel.builder.RouteBuilder;
+
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+
+import static java.time.Duration.ofSeconds;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -36,13 +47,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 
-public class x12 extends RouteBuilder {
+public class PdfRenderer extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
         // Routes are loaded from YAML files
     }
-
 
 
     @BindToRegistry(lazy=true)
@@ -140,12 +150,13 @@ public class x12 extends RouteBuilder {
 
                 String html = css + markdown;
 
-                System.out.println("HTML:\n"+html);
+                // System.out.println("HTML:\n"+html);
 
                 ByteArrayOutputStream os = new ByteArrayOutputStream();
 
                 HtmlConverter.convertToPdf(html, os);
 
+                exchange.getIn().setHeader("CamelAwsS3ContentType", "application/pdf");
                 
                 exchange.getIn().setBody(addRectangleToPdf(os.toByteArray()));
                 // exchange.getIn().setBody(os);
@@ -244,6 +255,4 @@ public class x12 extends RouteBuilder {
         canvas.rectangle(stripe.getX(), stripe.getY(), stripe.getWidth(), stripe.getHeight());
         canvas.fill();
     }
-
-
 }

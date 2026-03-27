@@ -47,7 +47,7 @@ find "$LAB_DIR" -name '*.map' -type f | while read -r mapfile; do
   fi
 
   # Process each mapping (target_key=infra_key)
-  while IFS='=' read -r target_key infra_key; do
+  while IFS='=' read -r target_key infra_key || [ -n "$target_key" ]; do
     # Skip empty lines and comments
     [[ -z "$target_key" || "$target_key" =~ ^[[:space:]]*# ]] && continue
 
@@ -63,20 +63,23 @@ find "$LAB_DIR" -name '*.map' -type f | while read -r mapfile; do
       continue
     fi
 
+    # Escape dots for regex matching
+    regex_key=$(echo "$target_key" | sed 's/\./\\./g')
+
     if $is_root; then
-      existing=$(grep "^${target_key}=" "$target" 2>/dev/null | cut -d'=' -f2-)
+      existing=$(grep "^${regex_key}=" "$target" 2>/dev/null | cut -d'=' -f2-)
       if [ -n "$existing" ]; then
         # Root folder: key already has a value, don't overwrite
         continue
       fi
     fi
 
-    if grep -q "^${target_key}=" "$target" 2>/dev/null; then
+    if grep -q "^${regex_key}=" "$target" 2>/dev/null; then
       # Key exists with = sign — replace its value
-      sed -i "s|^${target_key}=.*|${target_key}=${value}|" "$target"
-    elif grep -q "^${target_key}$" "$target" 2>/dev/null; then
+      sed -i "s|^${regex_key}=.*|${target_key}=${value}|" "$target"
+    elif grep -q "^${regex_key}$" "$target" 2>/dev/null; then
       # Key exists as bare entry (no =) — replace with key=value
-      sed -i "s|^${target_key}$|${target_key}=${value}|" "$target"
+      sed -i "s|^${regex_key}$|${target_key}=${value}|" "$target"
     else
       # Key doesn't exist — append with header on first new entry
       if ! grep -q "^# Lab config$" "$target" 2>/dev/null; then

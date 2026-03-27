@@ -15,7 +15,7 @@
         - setHeaders:
             id: setHeaders-3420
             description: set system prompt
-            disabled: false
+            disabled: true
             headers:
               - language:
                   expression: resource:system.message
@@ -28,12 +28,14 @@
             id: step-9559
             description: "To do: Agent"
             steps:
-              - to:
-                  id: to-1056
-                  uri: langchain4j-agent
-                  parameters:
-                    agentId: agent
-                    tags: all
+              - setBody:
+                  id: setBody-3474
+                  description: Dummy response
+                  simple:
+                    expression: |-
+                      {
+                         "text": "Hello World"
+                      }
         - to:
             id: to-1223
             description: to rocketchat
