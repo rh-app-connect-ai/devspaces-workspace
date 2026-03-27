@@ -1,0 +1,107 @@
+- route:
+    id: service-x12
+    from:
+      id: from-4294
+      uri: platform-http
+      parameters:
+        path: /ingest/x12
+      steps:
+        - to:
+            id: to-1736
+            uri: direct
+            parameters:
+              name: transform-x12
+        - step:
+            id: step-5396
+            description: "To do: Enable"
+            steps:
+              - to:
+                  id: to-2236
+                  uri: sql
+                  parameters:
+                    query: >-
+                      INSERT INTO invoices (id, data) VALUES
+                      (:#${variable.invoiceid},:#${body})
+
+                      ON CONFLICT (id)
+
+                      DO UPDATE SET data = EXCLUDED.data
+                  disabled: true
+        - step:
+            id: step-5396-3077
+            description: "To do: Enable"
+            steps:
+              - to:
+                  id: to-8424-9888-5731
+                  uri: direct
+                  parameters:
+                    name: store-pdf-s3
+                  disabled: true
+- route:
+    id: transform-x12
+    from:
+      id: from-4095
+      uri: direct
+      parameters:
+        name: transform-x12
+      steps:
+        - unmarshal:
+            dfdl:
+              schemaUri: X12-850.dfdl.xsd
+        - step:
+            id: step-3366
+            description: "To do: Update"
+            steps:
+              - step:
+                  id: kaoto-datamapper-e6fb3e6b-4288
+                  steps:
+                    - to:
+                        id: kaoto-datamapper-xslt-3464
+                        uri: xslt-saxon:kaoto-datamapper-e6fb3e6b-4288.xsl
+                        parameters:
+                          failOnNullBody: false
+        - setVariable:
+            id: setVariable-1059-2881
+            description: get invoiceid
+            name: invoiceid
+            xpath:
+              expression: /Invoice/InvoiceNumber/text()
+              resultQName: STRING
+- route:
+    id: store-pdf-s3
+    from:
+      uri: direct
+      parameters:
+        name: store-pdf-s3
+      steps:
+        - to:
+            description: Template PDF
+            uri: xslt-saxon
+            parameters:
+              resourceUri: template-pdf.xsl
+        - process:
+            description: generate PDF
+            ref: InvoiceToPDF
+        - to:
+            description: store PDF
+            uri: aws2-s3
+            parameters:
+              autoCreateBucket: true
+              bucketNameOrArn: invoices
+              forcePathStyle: true
+              keyName: invoice_${variable.invoiceid}.pdf
+              overrideEndpoint: true
+              region: us-east-1
+        - to:
+            description: get Link
+            uri: aws2-s3
+            parameters:
+              amazonS3Presigner: "#presigner"
+              autoCreateBucket: true
+              bucketNameOrArn: invoices
+              forcePathStyle: true
+              keyName: invoice_${variable.invoiceid}.pdf
+              operation: createDownloadLink
+              overrideEndpoint: true
+              region: us-east-1
+

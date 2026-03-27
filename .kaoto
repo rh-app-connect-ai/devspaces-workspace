@@ -158,5 +158,24 @@
 			]
 		},
 		"xsltPath": "kaoto-datamapper-72a80f87.xsl"
+	},
+	"kaoto-datamapper-e6fb3e6b-4288": {
+		"sourceBody": {
+			"type": "XML Schema",
+			"filePath": [
+				"support/schemas/X12-850.dfdl.xsd"
+			],
+			"fieldTypeOverrides": []
+		},
+		"sourceParameters": {},
+		"targetBody": {
+			"type": "XML Schema",
+			"filePath": [
+				"support/schemas/850.xsd"
+			],
+			"fieldTypeOverrides": []
+		},
+		"xsltPath": "kaoto-datamapper-e6fb3e6b-4288.xsl",
+		"namespaceMap": {}
 	}
 }

@@ -1,0 +1,94 @@
+#!/bin/bash
+# lab-config: Resolves .map files against the lab-config Secret
+# and fills in property values in target files.
+#
+# Usage: lab-config [lab-folder]
+#   lab-folder defaults to current directory
+
+set -uo pipefail
+
+LAB_DIR="${1:-.}"
+SECRET_NAME="lab-config"
+SECRET_KEY="config"
+CACHE_FILE="/tmp/lab-config.cache"
+
+# Use cached Secret if available, otherwise fetch and cache
+if [ -s "$CACHE_FILE" ]; then
+  TMPFILE="$CACHE_FILE"
+else
+  oc get secret "$SECRET_NAME" -o json 2>/dev/null \
+    | jq -r ".data[\"${SECRET_KEY}\"]" \
+    | base64 -d > "$CACHE_FILE"
+
+  if [ ! -s "$CACHE_FILE" ]; then
+    echo "step-config: Secret '$SECRET_NAME' not found or empty, skipping"
+    rm -f "$CACHE_FILE"
+    exit 0
+  fi
+  TMPFILE="$CACHE_FILE"
+fi
+
+# Find all .map files
+find "$LAB_DIR" -name '*.map' -type f | while read -r mapfile; do
+  dir=$(dirname "$mapfile")
+  target_name=$(basename "$mapfile" .map)
+  target="$dir/$target_name"
+
+  if [ ! -f "$target" ]; then
+    echo "step-config: target '$target' not found for map '$mapfile', skipping"
+    continue
+  fi
+
+  # Determine if this is the root lab folder (append) or inner folder (write)
+  rel_dir=$(realpath --relative-to="$LAB_DIR" "$dir" 2>/dev/null || echo "$dir")
+  is_root=false
+  if [ "$rel_dir" = "." ]; then
+    is_root=true
+  fi
+
+  # Process each mapping (target_key=infra_key)
+  while IFS='=' read -r target_key infra_key; do
+    # Skip empty lines and comments
+    [[ -z "$target_key" || "$target_key" =~ ^[[:space:]]*# ]] && continue
+
+    # Trim whitespace
+    target_key=$(echo "$target_key" | xargs)
+    infra_key=$(echo "$infra_key" | xargs)
+
+    # Look up value from Secret
+    value=$(grep "^${infra_key}=" "$TMPFILE" | head -1 | cut -d'=' -f2-)
+
+    if [ -z "$value" ]; then
+      echo "step-config: key '$infra_key' not found in Secret, skipping"
+      continue
+    fi
+
+    if $is_root; then
+      existing=$(grep "^${target_key}=" "$target" 2>/dev/null | cut -d'=' -f2-)
+      if [ -n "$existing" ]; then
+        # Root folder: key already has a value, don't overwrite
+        continue
+      fi
+    fi
+
+    if grep -q "^${target_key}=" "$target" 2>/dev/null; then
+      # Key exists with = sign — replace its value
+      sed -i "s|^${target_key}=.*|${target_key}=${value}|" "$target"
+    elif grep -q "^${target_key}$" "$target" 2>/dev/null; then
+      # Key exists as bare entry (no =) — replace with key=value
+      sed -i "s|^${target_key}$|${target_key}=${value}|" "$target"
+    else
+      # Key doesn't exist — append with header on first new entry
+      if ! grep -q "^# Lab config$" "$target" 2>/dev/null; then
+        sed -i -e '$a\' "$target"
+        echo "" >> "$target"
+        echo "# Lab config" >> "$target"
+      fi
+      echo "${target_key}=${value}" >> "$target"
+    fi
+
+  done < "$mapfile"
+
+  # Delete the map file
+  rm -f "$mapfile"
+done

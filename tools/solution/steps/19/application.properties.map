@@ -1,0 +1,5 @@
+
+
+# Datasource credentials
+spring.datasource.username=db_username
+spring.datasource.password=db_password

@@ -1,5 +1,3 @@
-//DEPS dev.langchain4j:langchain4j-open-ai:0.33.0
-
 //DEPS com.vladsch.flexmark:flexmark-all:0.64.8
 //DEPS com.itextpdf:html2pdf:6.1.0
 
@@ -11,15 +9,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.PropertyInject;
 import org.apache.camel.builder.RouteBuilder;
-
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-
-import static java.time.Duration.ofSeconds;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -54,87 +43,7 @@ public class x12 extends RouteBuilder {
         // Routes are loaded from YAML files
     }
 
-    // private static String LLM_URL;
 
-    // @PropertyInject("llm.url")
-    // public void setLlmUrl(String url) {
-    //     LLM_URL = url;
-    // }
-
-    // public static String getLlmUrl() {
-    //     return LLM_URL;
-    // }
-
-    // @BindToRegistry(lazy=true)
-    // public static ChatLanguageModel chatModelInvoice(){
-
-    //     ChatLanguageModel model = OpenAiChatModel.builder()
-    //         .apiKey("EMPTY")
-    //         // .modelName("qwen2.5:3b-instruct")
-    //         // .modelName("qwen2.5:7b-instruct")
-    //         .modelName("qwen2.5:14b-instruct")
-    //         .baseUrl("http://"+getLlmUrl()+"/v1/")
-    //         .temperature(0.0)
-    //         .timeout(ofSeconds(180))
-    //         .logRequests(true)
-    //         .logResponses(true)
-    //         .build();
-
-    //     return model;
-    // }
-
-/*
-    @BindToRegistry(lazy=true)
-    public static Processor generateInvoice(){
-
-        return new Processor() {
-            public void process(Exchange exchange) throws Exception {
-
-                String payload = exchange.getMessage().getBody(String.class);
-                List<ChatMessage> messages = new ArrayList<>();
-
-                String systemMessage = """
-                        You are an assistant to help generate invoices.
-    
-                        The input is Markdown.
-                        Provide the output as Markdown.
-     
-                        Apply the following layout when rendering the information:
-
-                            <div style="position: relative; float: right; margin-top: 20px; margin-right: 20px; background-color: rgba(255, 0, 0, 0.7); color: white; padding: 5px 20px; font-weight: bold; transform: rotate(15deg); font-size: 14px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">Amended</div>
-
-                            ## Invoice No: (number)
-                            Date of issue: (today)
-
-                            <br><br><br><br><br>
-
-                            <div style="display: flex; width: 100%;">
-                                <div style="vertical-align: top; padding-right: 40px;">
-                                    <div style="font-weight: bold; font-size: 1.2em; margin-bottom: 5px;">Seller:</div>
-                                    
-                                </div>
-                                <div style="vertical-align: top; padding-right: 40px;">
-                                    <div style="font-weight: bold; font-size: 1.2em; margin-bottom: 5px;">Client:</div>
-                                    
-                                </div>
-                            </div>
-
-                            ### ITEMS
-
-                            ### SUMMARY
-                           
-                        Do not use ``` (backticks), just return the raw Markdown value.
-                        Only return the HTML content, do not include comments.
-                        """;
-
-                messages.add(new SystemMessage(systemMessage));
-                messages.add(new UserMessage(payload));
-
-                exchange.getIn().setBody(messages);
-            }
-        };
-    }
-*/
 
     @BindToRegistry(lazy=true)
     public static Processor InvoiceToPDF(){
@@ -231,13 +140,12 @@ public class x12 extends RouteBuilder {
 
                 String html = css + markdown;
 
-                // System.out.println("HTML:\n"+html);
+                System.out.println("HTML:\n"+html);
 
                 ByteArrayOutputStream os = new ByteArrayOutputStream();
 
                 HtmlConverter.convertToPdf(html, os);
 
-                exchange.getIn().setHeader("CamelAwsS3ContentType", "application/pdf");
                 
                 exchange.getIn().setBody(addRectangleToPdf(os.toByteArray()));
                 // exchange.getIn().setBody(os);

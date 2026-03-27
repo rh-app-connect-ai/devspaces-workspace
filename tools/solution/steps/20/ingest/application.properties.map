@@ -1,0 +1,12 @@
+
+
+
+
+# Datasource credentials
+spring.datasource.username=db_username
+spring.datasource.password=db_password
+
+# S3 configuration
+camel.component.aws2-s3.accessKey=s3_access_key
+camel.component.aws2-s3.secretKey=s3_secret_key
+camel.component.aws2-s3.uriEndpointOverride=s3_endpoint

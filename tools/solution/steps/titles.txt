@@ -20,4 +20,5 @@
 19 NEW - Enable database connectivity with Service Interconnect
 20 NEW - Ingest purchase orders
 21 NEW - Create an AI assistant for support agents
-22 NEW - Apply token usage policies with Connectivity Link
+22 NEW - Create an AI assistant for support agents - done
+23 NEW - Apply token usage policies with Connectivity Link

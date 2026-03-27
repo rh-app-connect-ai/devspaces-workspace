@@ -1,0 +1,91 @@
+#!/bin/bash
+# Service Interconnect - cleanup then setup database connectivity
+
+set -euo pipefail
+
+USER=$(oc whoami)
+
+# Cleanup first (ignore errors from missing resources)
+# si-cleanup
+
+echo ""
+
+NS="${USER}-devspaces"
+DB_NS="shared-database"
+
+echo "=== Setting up Service Interconnect for ${USER} in ${NS} ==="
+
+
+# Step 1: Create Site
+echo "--- Step 1: Creating Site ---"
+cat <<EOF | oc apply -f -
+apiVersion: skupper.io/v2alpha1
+kind: Site
+metadata:
+  name: ${USER}-site
+  namespace: ${NS}
+spec:
+  linkAccess: route
+EOF
+
+echo "Waiting for Site to be configured..."
+oc wait --for=condition=Configured site/${USER}-site -n ${NS} --timeout=120s
+
+# Step 2: Create AccessGrant
+echo "--- Step 2: Creating AccessGrant ---"
+cat <<EOF | oc apply -f -
+apiVersion: skupper.io/v2alpha1
+kind: AccessGrant
+metadata:
+  name: grant-${USER}
+  namespace: ${NS}
+spec:
+  redemptionsAllowed: 1
+  expirationWindow: 168h
+EOF
+
+echo "Waiting for AccessGrant to be ready..."
+oc wait --for=condition=Ready accessgrant/grant-${USER} -n ${NS} --timeout=120s
+
+# Step 3: Create AccessToken in shared-database
+echo "--- Step 3: Creating AccessToken in ${DB_NS} ---"
+URL=$(oc get accessgrant grant-${USER} -n ${NS} -o jsonpath='{.status.url}')
+CODE=$(oc get accessgrant grant-${USER} -n ${NS} -o jsonpath='{.status.code}')
+CA=$(oc get accessgrant grant-${USER} -n ${NS} -o jsonpath='{.status.ca}' | sed 's/^/    /')
+
+cat <<EOF | oc apply -f -
+apiVersion: skupper.io/v2alpha1
+kind: AccessToken
+metadata:
+  name: token-${USER}
+  namespace: ${DB_NS}
+spec:
+  url: "${URL}"
+  code: "${CODE}"
+  ca: |
+${CA}
+EOF
+
+echo "Waiting for Link to be ready..."
+oc wait --for=condition=Ready link/token-${USER} -n ${DB_NS} --timeout=120s
+
+# Step 4: Create Listener
+echo "--- Step 4: Creating Listener ---"
+cat <<EOF | oc apply -f -
+apiVersion: skupper.io/v2alpha1
+kind: Listener
+metadata:
+  name: postgres-listener
+  namespace: ${NS}
+spec:
+  routingKey: postgres
+  host: postgres
+  port: 5432
+EOF
+
+echo "Waiting for Listener to be ready..."
+oc wait --for=condition=Ready listener/postgres-listener -n ${NS} --timeout=120s
+
+echo ""
+echo "=== Done! Database connectivity established for ${USER} ==="
+echo "Test with: psql -h postgres -U ${USER} -d labdb"

@@ -13,6 +13,19 @@ if [ ! "$1" ]; then
   exit
 fi
 
+# Check OpenShift connectivity before modifying any files
+if ! oc whoami &>/dev/null; then
+  LOGIN_USER="${DEVWORKSPACE_NAMESPACE%%-devspaces}"
+  LOGIN_SERVER="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+  echo ""
+  echo -e "\033[33mWARNING: Not logged into OpenShift. Step was not executed."
+  echo -e "Please log in first:"
+  echo ""
+  echo -e "  oc login -u ${LOGIN_USER} -p <password> ${LOGIN_SERVER}"
+  echo -e "\033[0m"
+  exit 1
+fi
+
 # Get first and last step IDs
 cd $FF
 FIRST=`ls -d */ | sort -n | cut -f1 -d'/' | head -n 1`
@@ -43,5 +56,7 @@ echo -e "\033[33mstep $1 ready [`grep '^'$1' ' $FF/titles.txt | cut -d' ' -f 2-`
 
 echo "$1" > $TOOLS/scripts/current
 
+# Resolve lab configuration
+step-config $LAB
 
 cd $LAB
