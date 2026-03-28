@@ -7,28 +7,6 @@
       parameters:
         path: /ai-support
       steps:
-        - step:
-            id: step-2056
-            steps:
-              - setBody:
-                  constant: >
-                    {"text":"Here's your invoice data:\n\n**Invoice Number:**
-                    61356293\n**Date of Issue:** 20120906\n\n**Seller:**\n-
-                    Name: Georgia World Congress Center\n- Address: 285 Andrew
-                    Young International Blvd NW, Atlanta, Georgia, GA 30313\n-
-                    Tax ID: 939988477\n- IBAN:
-                    GB50ACIE59715038217063\n\n**Client:**\n- Name: Chapman, Kim
-                    and Green\n- Address: 64731 James Branch, Smithmouth, NC,
-                    26872\n- Tax ID: 949849105\n\n**Items:**\n- Item 1:\n  -
-                    Product ID: WINEGLASS01\n  - Description: Wine Glasses
-                    Goblets Pair Clear Glass\n  - Quantity: 5\n  - Unit of
-                    Measure: Each\n  - Net Price: $12\n  - Net Worth: $60\n  -
-                    VAT Percentage: 10%\n  - Gross Worth: $66\n\n**Summary:**\n-
-                    VAT Percentage: 10%\n- Net Worth: $192.81\n- VAT Amount:
-                    $19.28\n- Gross Worth: $212.09"}
-              - stop:
-                  id: stop-3482
-            disabled: true
         - setBody:
             description: get text
             jq:
@@ -73,12 +51,12 @@
             parameters:
               name: to-rocketchat
 - route:
-    id: tool-retrieve-pdf
-    description: Retrieves the PDF url of an invoice
+    id: tool-get-pdf
+    description: Gets the PDF url of an invoice
     from:
       uri: langchain4j-tools
       parameters:
-        description: Retrieves the PDF url of an invoice
+        description: Get the PDF url of an invoice
         parameter.id: string
         tags: all
         toolId: getInvoicePDFurl
@@ -194,18 +172,50 @@
                   id: setBody-1842
                   simple:
                     expression: ${body.trim()}
+                  disabled: true
+              - setVariable:
+                  id: setVariable-3622
+                  name: summary
+                  xpath:
+                    expression: /Amendment/Summary/text()
+                    saxon: true
+                  description: get summary
+              - setBody:
+                  id: setBody-1842-3654
+                  xpath:
+                    expression: /Amendment/Content/Invoice
+                    saxon: true
+              - convertBodyTo:
+                  id: convertBodyTo-1103
+                  type: String
               - log:
                   id: log-1389
-                  message: ${body}
+                  message: "summary: ${variable.summary}\\n${body}"
+              - to:
+                  uri: sql
+                  parameters:
+                    query: >-
+                      INSERT INTO invoices (id, data) VALUES
+                      (:#${header.id},:#${body})
+
+                      ON CONFLICT (id)
+
+                      DO UPDATE SET data = EXCLUDED.data
               - to:
                   id: to-1542
                   uri: direct
                   parameters:
                     name: store-pdf-s3
+                  disabled: false
               - setBody:
                   id: setBody-3423
                   simple:
-                    expression: done
+                    expression: >-
+                      {
+                        "status":"done",
+                        "summary":  "${variable.summary}",
+                        "actions":"1) Inform the user with 'The database records have been updated'. 2) Provide summary. 3) Ask if they'd like to see the new PDF invoice."
+                      }
             disabled: false
 - route:
     id: get-invoice-data
@@ -249,9 +259,9 @@
       uri: langchain4j-tools
       parameters:
         description: Obtains data about an invoice from the database
-        parameter.id: string
-        tags: all
+        tags: db
         toolId: getInvoiceData
+        parameter.id: string
       steps:
         - to:
             id: to-1810-2640-3288
@@ -268,14 +278,15 @@
         description: Creates an issue or ticket in the HelpDesk system
         parameter.subject: string
         parameter.content: string
+        parameter."invoiceUrl: (optional) string
         tags: all
         toolId: createTicket
-      steps:        
+      steps:
         - setBody:
             simple: >-
               {
                 "subject": "${header.subject}",
-                "issue": "${header.content}"
+                "issue": "${header.content}<br><br>[📄 View Invoice PDF](${header.invoiceUrl})"
               }
             description: set JSON call
         - to:
@@ -287,8 +298,16 @@
               typeId: "{{helpdesk.type.id.issue}}"
               priorityId: "{{helpdesk.priority.id.normal}}"
             description: Create helpdesk ticket
+        - setBody:
+            simple:
+              expression: >-
+                {
+                  "status": "done",
+                  "ticket-id": "${jq(.ticket.uid)}",
+                  "actions": "1) Do not share the ticket with the customer. 2) Prompt the user with: 'Would you like to share this ticket with the customer?"
+                }
         - log:
-            message: "Ticket created"
+            message: Ticket created
             description: Log result
 - route:
     id: store-pdf-s3
@@ -315,3 +334,38 @@
               keyName: invoice_${header.id}.pdf
               overrideEndpoint: true
               region: us-east-1
+- route:
+    id: tool-share-ticket
+    description: Shares a ticket with customer
+    from:
+      id: tool-share-ticket
+      uri: langchain4j-tools
+      parameters:
+        description: Shares a ticket created in HelpDesk with customer
+        parameter.ticketId: string
+        tags: all
+        toolId: shareTicket
+      steps:
+        - log:
+            message: ${body}
+        - setBody:
+            simple:
+              expression: >-
+                {
+                  "timesptamp":"${date:now}",
+                  "source":"rocketchat",
+                  "user":"ai",
+                  "text":"<br><br><a href=\"{{helpdesk.url}}\">📄 Ticket <b>#${header.ticketId}</b></a> created.<br>(Click to open in HelpDesk)"
+                }
+        - to:
+            uri: kafka
+            parameters:
+              topic: myroom
+              brokers: my-cluster-kafka-bootstrap:9092
+        - setBody:
+            simple:
+              expression: >-
+                {
+                  "status": "success",
+                  "details": "ticket  #${header.ticketId} was sent to customer channel with link to HelpDesk"
+                }

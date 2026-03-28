@@ -9,7 +9,14 @@ Summary contains the total cost calculation of all the products purchased.
 
 Modify the XML payload as per the user request.
 
-Provide the output as XML.
+Provide the output as follows:
+
+<Amendment>
+  <Summary>here_a_summary_of_what_was_modified</Summary>
+  <Content>
+    new_invoice_xml (omit the XML Declaration)
+  </Content>
+<Amendment>
 
 Do not insert comments.
 
