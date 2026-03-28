@@ -16,44 +16,19 @@ oc project $NS_TEST
 # Build flows from folder where source code is located
 cd /projects/workshop/tools/test/flows
 
-
-# Where to call (change namespace if needed)
-DOCSERVER_URL="http://docserver.webapp.svc:80"
-
-# Fetch token,userId in one shot
-echo "Fetching Rocket.Chat credentials from $DOCSERVER_URL ..."
-RESPONSE=$(curl -sSf "$DOCSERVER_URL/configuration/rocketchat/$TEST_USER")   # -s silent, -S show errors, -f fail on HTTP errors
-
-echo "response was: $RESPONSE"
-
-# Split the response on the comma
-IFS=',' read -r ROCKETCHAT_TOKEN ROCKETCHAT_USERID <<< "$RESPONSE"
-
-# Sanity check
-if [[ -z "$ROCKETCHAT_TOKEN" || -z "$ROCKETCHAT_USERID" ]]; then
-  echo "ERROR: Invalid response from docserver: '$RESPONSE'" >&2
-  exit 1
+# Read credentials from lab-config Secret
+CACHE="/tmp/lab-config.cache"
+if [ ! -s "$CACHE" ]; then
+  oc get secret lab-config -o json | jq -r '.data["config"]' | base64 -d > "$CACHE"
 fi
 
-echo "Got token: ${ROCKETCHAT_TOKEN:0:10}... and userId: $ROCKETCHAT_USERID"
+ROCKETCHAT_TOKEN=$(grep '^rocketchat_token=' "$CACHE" | cut -d'=' -f2-)
+ROCKETCHAT_USERID=$(grep '^rocketchat_userid=' "$CACHE" | cut -d'=' -f2-)
+MATRIX_TOKEN=$(grep '^matrix_token=' "$CACHE" | cut -d'=' -f2-)
+MATRIX_ROOM=$(grep '^matrix_room=' "$CACHE" | cut -d'=' -f2-)
 
-
-# Fetch token,userId in one shot
-echo "Fetching Matrix credentials from $DOCSERVER_URL ..."
-RESPONSE=$(curl -sSf "$DOCSERVER_URL/configuration/matrix/$TEST_USER")   # -s silent, -S show errors, -f fail on HTTP errors
-
-echo "response was: $RESPONSE"
-
-# Split the response on the comma
-IFS=',' read -r MATRIX_TOKEN MATRIX_ROOM <<< "$RESPONSE"
-
-# Sanity check
-if [[ -z "$MATRIX_TOKEN" || -z "$MATRIX_ROOM" ]]; then
-  echo "ERROR: Invalid response from docserver: '$RESPONSE'" >&2
-  exit 1
-fi
-
-echo "Got token: $MATRIX_TOKEN and userId: $MATRIX_ROOM"
+echo "Got RC token: ${ROCKETCHAT_TOKEN:0:10}... and userId: $ROCKETCHAT_USERID"
+echo "Got Matrix token: ${MATRIX_TOKEN:0:10}... and room: $MATRIX_ROOM"
 
 cat > application.properties <<EOF
 # Matrix credentials

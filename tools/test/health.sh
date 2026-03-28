@@ -67,10 +67,10 @@ else
 fi
 
 
-echo -e "\n=== 4. Checking DocServer (namespace webapp) ==="
-oc -n webapp get pods --selector "app in (docserver)" --no-headers
+echo -e "\n=== 4. Checking DocServer (namespace showroom) ==="
+oc -n showroom get pods --selector "app in (docserver)" --no-headers
 
-DOCSERVER_OK=$(oc -n webapp get pods --selector "app in (docserver)" --no-headers \
+DOCSERVER_OK=$(oc -n showroom get pods --selector "app in (docserver)" --no-headers \
   -o jsonpath='{range .items[*]}{.status.phase}{"\t"}{.status.containerStatuses[0].ready}{"\n"}{end}' \
   | grep -c "Running	true")
 

@@ -29,14 +29,14 @@ done
 
 # Wait until no pods exist outside user60-devspaces with that label
 until [ -z "$(oc get pods --all-namespaces --selector=group=org.example.project --sort-by=.metadata.namespace --no-headers \
-    | grep -v $NS_TEST | grep -v webapp)" ]; do
+    | grep -v $NS_TEST | grep -v showroom)" ]; do
   REMAINING=$(oc get pods --all-namespaces --selector=group=org.example.project --sort-by=.metadata.namespace --no-headers \
-               | grep -v $NS_TEST | grep -v webapp | wc -l)
-  echo "Still waiting... $REMAINING unwanted pods remain (outside $NS_TEST and webapp)"
+               | grep -v $NS_TEST | grep -v showroom | wc -l)
+  echo "Still waiting... $REMAINING unwanted pods remain (outside $NS_TEST and showroom)"
   sleep 5
 done
 
-info "Cleanup complete – only $NS_TEST (and webapp) pods remain with the label"
+info "Cleanup complete – only $NS_TEST (and showroom) pods remain with the label"
 oc get pods --all-namespaces --selector=group=org.example.project --sort-by=.metadata.namespace
 
 oc project $NS_TEST
