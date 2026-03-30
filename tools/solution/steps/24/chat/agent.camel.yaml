@@ -21,6 +21,10 @@
               simple:
                 expression: "1"
             name: CamelLangChain4jAgentMemoryId
+        - setHeader:
+            name: CamelLangChain4jAgentSystemMessage
+            constant:
+              expression: /no_think
         - to:
             uri: langchain4j-agent:test
             parameters:
