@@ -1,0 +1,34 @@
+- route:
+    description: Kafka to RocketChat
+    from:
+      description: "To do: Kafka"
+      uri: kafka
+      parameters:
+        topic: myroom
+        brokers: my-cluster-kafka-bootstrap:9092
+      steps:
+        - filter:
+            description: "To do: Filter"
+            steps:
+              - stop: {}
+            jq:
+              expression: .source | test("rocketchat")
+        - step:
+            description: "To do: Mapping"
+            steps:
+              - step:
+                  id: kaoto-datamapper-beba1703
+                  steps:
+                    - to:
+                        id: kaoto-datamapper-xslt-2646
+                        uri: xslt-saxon:kaoto-datamapper-beba1703.xsl
+                        parameters:
+                          failOnNullBody: false
+                          useJsonBody: true
+        - to:
+            description: RocketChat
+            uri: kamelet
+            parameters:
+              templateId: rocketchat-sink
+              token: "{{rocketchat.token}}"
+              userid: "{{rocketchat.userid}}"

@@ -1,7 +1,7 @@
 0 Define the 'm2r' flow: Matrix to RocketChat
 1 Test the 'm2r' flow: Matrix to RocketChat
-2 Define a filter to prevent death loops
-3 Define the 'r2m' flow: RocketChat to Matrix
+2 NEW - Define the 'k2r' flow: Kafka to RocketChat
+3 NEW - Define the 'k2r' flow: Kafka to RocketChat (done)
 4 Deploy and undeploy on OpenShift
 5 Migrate to a decoupled architecture
 6 Deploy event-driven flows on OpenShift

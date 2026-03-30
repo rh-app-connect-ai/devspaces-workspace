@@ -9,11 +9,8 @@
               - stop: {}
             jq:
               expression: ""
-              source: common
         - step:
             description: "To do: Mapping"
-        - log:
-            message: ${body}
         - to:
             description: RocketChat
             uri: kamelet
@@ -21,4 +18,3 @@
               templateId: rocketchat-sink
               token: "{{rocketchat.token}}"
               userid: "{{rocketchat.userid}}"
-      variableReceive: common

@@ -1,0 +1,3 @@
+# Rocket.Chat credentials
+rocketchat.token=rocketchat_token
+rocketchat.userid=rocketchat_userid
