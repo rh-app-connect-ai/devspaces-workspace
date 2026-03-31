@@ -1,0 +1,42 @@
+#!/bin/bash
+# Service Interconnect - status overview
+
+USER=$(oc whoami)
+NS="${USER}-devspaces"
+DB_NS="shared-database"
+
+GREEN="\033[32m"
+RED="\033[31m"
+YELLOW="\033[33m"
+RESET="\033[0m"
+
+check() {
+  local label="$1" resource="$2" namespace="$3"
+  local status message
+  status=$(oc get "$resource" -n "$namespace" -o jsonpath='{.status.status}' 2>/dev/null)
+  message=$(oc get "$resource" -n "$namespace" -o jsonpath='{.status.message}' 2>/dev/null)
+  if [ -z "$status" ]; then
+    printf "  ${RED}✗${RESET} %-20s not found\n" "$label"
+  elif [ "$status" = "Ready" ]; then
+    printf "  ${GREEN}✓${RESET} %-20s ready  %s\n" "$label" "$message"
+  elif [ "$status" = "Error" ]; then
+    printf "  ${RED}✗${RESET} %-20s error  %s\n" "$label" "$message"
+  else
+    printf "  ${YELLOW}~${RESET} %-20s %s  %s\n" "$label" "$status" "$message"
+  fi
+}
+
+echo ""
+echo "=== Service Interconnect status for ${USER} ==="
+echo ""
+echo "Namespace: ${NS}"
+check "Site"         "site/${USER}-site"              "$NS"
+check "AccessGrant"  "accessgrant/grant-${USER}"      "$NS"
+check "Listener"     "listener/postgres-listener"     "$NS"
+
+echo ""
+echo "Namespace: ${DB_NS}"
+check "AccessToken"  "accesstoken/token-${USER}"      "$DB_NS"
+check "Link"         "link/token-${USER}"             "$DB_NS"
+
+echo ""

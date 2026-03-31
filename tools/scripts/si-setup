@@ -1,23 +1,22 @@
 #!/bin/bash
-# Service Interconnect - cleanup then setup database connectivity
+# Service Interconnect - setup database connectivity (idempotent)
 
 set -euo pipefail
 
+GREEN="[32m"
+YELLOW="[33m"
+RESET="[0m"
+
 USER=$(oc whoami)
-
-# Cleanup first (ignore errors from missing resources)
-# si-cleanup
-
-echo ""
-
 NS="${USER}-devspaces"
 DB_NS="shared-database"
 
-echo "=== Setting up Service Interconnect for ${USER} in ${NS} ==="
-
+echo ""
+echo -e "${YELLOW}=== Setting up Service Interconnect for ${USER} ===${RESET}"
+echo ""
 
 # Step 1: Create Site
-echo "--- Step 1: Creating Site ---"
+echo -e "--- ${YELLOW}Step 1:${RESET} Creating Site ---"
 cat <<EOF | oc apply -f -
 apiVersion: skupper.io/v2alpha1
 kind: Site
@@ -28,11 +27,20 @@ spec:
   linkAccess: route
 EOF
 
-echo "Waiting for Site to be configured..."
 oc wait --for=condition=Configured site/${USER}-site -n ${NS} --timeout=120s
+echo -e "${GREEN}Site configured${RESET}"
+
+# Wait for router route to be available (needed for grant endpoint resolution)
+echo "Waiting for router route..."
+for i in $(seq 1 30); do
+  oc get route skupper-router-inter-router -n ${NS} &>/dev/null && break
+  sleep 2
+done
+oc wait --for=jsonpath='{.status.ingress[0].conditions[0].status}'=True route/skupper-router-inter-router -n ${NS} --timeout=120s
 
 # Step 2: Create AccessGrant
-echo "--- Step 2: Creating AccessGrant ---"
+echo ""
+echo -e "--- ${YELLOW}Step 2:${RESET} Creating AccessGrant ---"
 cat <<EOF | oc apply -f -
 apiVersion: skupper.io/v2alpha1
 kind: AccessGrant
@@ -44,11 +52,12 @@ spec:
   expirationWindow: 168h
 EOF
 
-echo "Waiting for AccessGrant to be ready..."
 oc wait --for=condition=Ready accessgrant/grant-${USER} -n ${NS} --timeout=120s
+echo -e "${GREEN}AccessGrant ready${RESET}"
 
 # Step 3: Create AccessToken in shared-database
-echo "--- Step 3: Creating AccessToken in ${DB_NS} ---"
+echo ""
+echo -e "--- ${YELLOW}Step 3:${RESET} Creating AccessToken in ${DB_NS} ---"
 URL=$(oc get accessgrant grant-${USER} -n ${NS} -o jsonpath='{.status.url}')
 CODE=$(oc get accessgrant grant-${USER} -n ${NS} -o jsonpath='{.status.code}')
 CA=$(oc get accessgrant grant-${USER} -n ${NS} -o jsonpath='{.status.ca}' | sed 's/^/    /')
@@ -66,11 +75,17 @@ spec:
 ${CA}
 EOF
 
-echo "Waiting for Link to be ready..."
+for i in $(seq 1 20); do
+  oc get link/token-${USER} -n ${DB_NS} &>/dev/null && break
+  sleep 3
+done
+
 oc wait --for=condition=Ready link/token-${USER} -n ${DB_NS} --timeout=120s
+echo -e "${GREEN}Link ready${RESET}"
 
 # Step 4: Create Listener
-echo "--- Step 4: Creating Listener ---"
+echo ""
+echo -e "--- ${YELLOW}Step 4:${RESET} Creating Listener ---"
 cat <<EOF | oc apply -f -
 apiVersion: skupper.io/v2alpha1
 kind: Listener
@@ -83,9 +98,8 @@ spec:
   port: 5432
 EOF
 
-echo "Waiting for Listener to be ready..."
 oc wait --for=condition=Ready listener/postgres-listener -n ${NS} --timeout=120s
+echo -e "${GREEN}Listener ready${RESET}"
 
 echo ""
-echo "=== Done! Database connectivity established for ${USER} ==="
-echo "Test with: psql -h postgres -U ${USER} -d labdb"
+si-status

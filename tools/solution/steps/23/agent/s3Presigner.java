@@ -28,7 +28,7 @@ public class s3Presigner extends RouteBuilder {
     private static String S3_ACCESS_KEY;
     private static String S3_SECRET_KEY;
 
-    @PropertyInject("camel.component.aws2-s3.uriEndpointOverride")
+    @PropertyInject("s3.presigner.uri")
     public void setS3Endpoint(String url) {
         S3_ENDPOINT = url;
     }
@@ -37,7 +37,7 @@ public class s3Presigner extends RouteBuilder {
         return S3_ENDPOINT;
     }
 
-    @PropertyInject("camel.component.aws2-s3.accessKey")
+    @PropertyInject("s3.presigner.access-key")
     public void setS3AccessKey(String key) {
         S3_ACCESS_KEY = key;
     }
@@ -47,7 +47,7 @@ public class s3Presigner extends RouteBuilder {
     }
 
 
-    @PropertyInject("camel.component.aws2-s3.secretKey")
+    @PropertyInject("s3.presigner.secret-key")
     public void setS3SecretKey(String key) {
         S3_SECRET_KEY = key;
     }

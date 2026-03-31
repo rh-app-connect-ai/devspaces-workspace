@@ -1,0 +1,38 @@
+#!/bin/bash
+# Service Interconnect - reset database connectivity resources
+
+set -uo pipefail
+
+GREEN="\033[32m"
+YELLOW="\033[33m"
+RESET="\033[0m"
+
+USER=$(oc whoami)
+NS="${USER}-devspaces"
+DB_NS="shared-database"
+
+echo ""
+echo -e "${YELLOW}=== Resetting Service Interconnect for ${USER} ===${RESET}"
+echo ""
+
+oc delete listener/postgres-listener -n ${NS} --ignore-not-found
+oc delete accesstoken/token-${USER} -n ${DB_NS} --ignore-not-found
+oc delete secret/token-${USER} -n ${DB_NS} --ignore-not-found
+oc delete link/token-${USER} -n ${DB_NS} --ignore-not-found
+oc delete accessgrant/grant-${USER} -n ${NS} --ignore-not-found
+oc delete site/${USER}-site -n ${NS} --ignore-not-found
+
+# Wait for resources to be fully removed
+for i in $(seq 1 30); do
+  oc get site/${USER}-site -n ${NS} &>/dev/null || break
+  sleep 2
+done
+
+# Wait for router pods to terminate
+oc wait --for=delete pod -l application=skupper-router -n ${NS} --timeout=120s 2>/dev/null
+
+echo ""
+echo -e "${GREEN}=== Reset complete for ${USER} ===${RESET}"
+echo ""
+
+si-status
