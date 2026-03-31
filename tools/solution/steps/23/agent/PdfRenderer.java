@@ -1,25 +1,12 @@
-//DEPS dev.langchain4j:langchain4j-open-ai:0.33.0
-
 //DEPS com.vladsch.flexmark:flexmark-all:0.64.8
 //DEPS com.itextpdf:html2pdf:6.1.0
-
 //DEPS com.itextpdf:itext7-core:9.1.0@pom
-
 
 import org.apache.camel.BindToRegistry;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.PropertyInject;
 import org.apache.camel.builder.RouteBuilder;
-
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-
-import static java.time.Duration.ofSeconds;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
