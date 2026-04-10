@@ -1,25 +1,9 @@
-0 Define the 'm2r' flow: Matrix to RocketChat
-1 Test the 'm2r' flow: Matrix to RocketChat
-2 NEW - Define the 'k2r' flow: Kafka to RocketChat
-3 NEW - Define the 'k2r' flow: Kafka to RocketChat (done)
-4 Deploy and undeploy on OpenShift
-5 Migrate to a decoupled architecture
-6 Deploy event-driven flows on OpenShift
-7 Sink Kamelet for Discord (create base skeleton)
-8 Sink Kamelet for Discord (add steps)
-9 Sink Kamelet for Discord (completed)
-10 Define the 'k2d' flow: Kafka to Discord
-11 Test the 'k2d' flow: Kafka to Discord
-12 Define the Discord consumer
-13 Test the Discord cosumer
-14 Define the 'd2k' flow: Discord to Kafka
-15 Test the 'd2k' flow: Discord to Kafka
-16 Create the archiving process
-17 Run and test locally
-18 Deploy as a Cron Job on OpenShift
-19 NEW - Enable database connectivity with Service Interconnect
-20 NEW - Ingest purchase orders
-21 NEW - Ingest purchase orders - done
-22 NEW - Create an AI assistant for support agents
-23 NEW - Create an AI assistant for support agents - done
-24 NEW - Apply token usage policies with Connectivity Link
+1 Enable database connectivity with Service Interconnect
+2 Ingest purchase orders
+3 Ingest purchase orders - done
+4 Define the 'k2r' flow: Kafka to RocketChat
+5 Define the 'k2r' flow: Kafka to RocketChat - done
+6 Create an AI assistant for support agents
+7 Create an AI assistant for support agents - done
+8 Apply token usage policies with Connectivity Link
+9 RESERVED - 4 chat flows
