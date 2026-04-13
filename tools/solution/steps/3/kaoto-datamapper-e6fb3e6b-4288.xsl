@@ -12,20 +12,20 @@
             </DateOfIssue>
             <Seller>
                 <Name>
-                    <xsl:value-of select="&quot;Convention Center&quot;"/>
+                    <xsl:value-of select="&quot;Georgia World Congress Center&quot;&#10;"/>
                 </Name>
                 <Address>
                     <Street>
-                        <xsl:value-of select="/X12_850/Header/N1Loop[1]/N3/N3-01"/>
+                        <xsl:value-of select="&quot;285 Andrew Young International Blvd NW&quot;"/>
                     </Street>
                     <City>
-                        <xsl:value-of select="/X12_850/Header/N1Loop[1]/N4/N4-01"/>
+                        <xsl:value-of select="&quot;Atlanta&quot;"/>
                     </City>
                     <State>
-                        <xsl:value-of select="/X12_850/Header/N1Loop[1]/N4/N4-02"/>
+                        <xsl:value-of select="&quot;Georgia&quot;"/>
                     </State>
                     <PostalCode>
-                        <xsl:value-of select="/X12_850/Header/N1Loop[1]/N4/N4-03"/>
+                        <xsl:value-of select="&quot;GA 30313&quot;"/>
                     </PostalCode>
                 </Address>
                 <TaxId>
