@@ -280,6 +280,95 @@
       word-break: break-all;
     }
 
+    /* ---- xml response ---- */
+    .xml-result {
+      margin-top: 1rem;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.06);
+      overflow: hidden;
+      display: none;
+    }
+    .xml-result.visible { display: block; animation: slideIn 0.35s ease; }
+    .xml-header {
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+      font-size: 1rem;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #0284c7;
+    }
+    .xml-header svg { width: 20px; height: 20px; }
+    .xml-body {
+      padding: 0.75rem;
+    }
+    .xml-body pre {
+      font-size: 0.76rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #334155;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      background: #f0f9ff;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid #bae6fd;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    /* ---- db check ---- */
+    .db-check {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .db-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.25rem;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s;
+      box-shadow: 0 2px 8px rgba(99,102,241,.3);
+    }
+    .db-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99,102,241,.4);
+    }
+    .db-btn svg { width: 16px; height: 16px; }
+    .db-status {
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+    }
+    .db-status svg { width: 16px; height: 16px; }
+    .db-status.found {
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+    .db-status.not-found {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+
     /* ---- edi preview ---- */
     .edi-preview {
       margin-top: 1rem;
@@ -300,19 +389,20 @@
     }
     .edi-preview summary svg { width: 16px; height: 16px; }
     .edi-preview pre {
-      padding: 0 1.25rem 1rem;
       font-size: 0.76rem;
-      line-height: 1.55;
+      line-height: 1.6;
       white-space: pre-wrap;
       word-break: break-all;
-      color: #334155;
+      color: #e2e8f0;
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-      background: #f8fafc;
+      background: #2d333b;
       margin: 0 0.75rem 0.75rem;
-      padding: 0.75rem;
+      padding: 1rem;
       border-radius: 8px;
-      border: 1px solid #e2e8f0;
+      border: none;
     }
+    .edi-preview pre .edi-seg { color: #f472b6; font-weight: 700; }
+    .edi-preview pre .edi-delim { color: #f472b6; }
 
     /* ---- chat fab ---- */
     .chat-fab {
@@ -427,6 +517,36 @@
         View Invoice (PDF)
       </a>
       <div class="invoice-filename" id="invoiceFilename"></div>
+      <div class="db-check">
+        <button class="db-btn" onclick="checkDb()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+          </svg>
+          Check Database
+        </button>
+        <span class="db-status" id="dbStatusInvoice" style="display:none"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="xml-result" id="xmlResult">
+    <div class="xml-header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+      </svg>
+      XML Response
+    </div>
+    <div class="xml-body">
+      <pre id="xmlContent"></pre>
+      <div class="db-check">
+        <button class="db-btn" onclick="checkDb()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+          </svg>
+          Check Database
+        </button>
+        <span class="db-status" id="dbStatusXml" style="display:none"></span>
+      </div>
     </div>
   </div>
 
@@ -499,6 +619,7 @@ const icons = {
 };
 
 let orderPlaced = false;
+let lastPoNumber = null;
 
 const catalog = [
   { sku: "WINEGLASS01", name: "Wine Glasses Goblets Pair Clear Glass",  price: 12.00, qty: 0 },
@@ -530,7 +651,7 @@ function render() {
 
   const total = catalog.reduce((s, it) => s + it.price * it.qty, 0);
   document.getElementById("total").textContent = "$" + total.toFixed(2);
-  document.getElementById("ediPreview").textContent = buildX12();
+  document.getElementById("ediPreview").innerHTML = highlightEdi(buildX12());
 
   const btn = document.getElementById("buyBtn");
   const hasItems = catalog.some(it => it.qty > 0);
@@ -550,6 +671,13 @@ function changeQty(index, delta) {
   render();
 }
 
+/* ---- EDI syntax highlighting ---- */
+function highlightEdi(edi) {
+  const escaped = edi.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return escaped.replace(/^([A-Z][A-Z0-9]{1,3})(\*)/gm,
+    '<span class="edi-seg">$1</span><span class="edi-delim">$2</span>');
+}
+
 /* ---- build EDI X12 850 Purchase Order ---- */
 function pad(str, len) { return (str + " ".repeat(len)).slice(0, len); }
 
@@ -557,13 +685,13 @@ function buildX12() {
   const now  = new Date();
   const date = now.toISOString().slice(0,10).replace(/-/g,"");
   const time = String(now.getHours()).padStart(2,"0") + String(now.getMinutes()).padStart(2,"0");
-  const poNum = String(Math.floor(Math.random() * 90000000) + 10000000);
+  if (!lastPoNumber) lastPoNumber = String(Math.floor(Math.random() * 90000000) + 10000000);
 
   const lines = [];
   lines.push(`ISA*00*${pad("",10)}*00*${pad("",10)}*01*${pad("939988477",15)}*01*${pad("949849105",15)}*${date.slice(2)}*${time}*U*00401*000000001*0*P*:~`);
   lines.push(`GS*PO*939988477*949849105*${date}*${time}*1*X*004010~`);
   lines.push(`ST*850*0001~`);
-  lines.push(`BEG*00*SA*${poNum}**${date}~`);
+  lines.push(`BEG*00*SA*${lastPoNumber}**${date}~`);
   lines.push(`N1*BY*Web Customer*91*939988477~`);
   lines.push(`N3*123 Demo Street~`);
   lines.push(`N4*Demoville*CA*90210~`);
@@ -611,23 +739,40 @@ async function buy() {
       body: buildX12(),
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const invoiceUrl = await resp.text();
+    const contentType = resp.headers.get("Content-Type") || "";
+    const body = await resp.text();
+    const trimmed = body.trim();
+    const isInvoice = trimmed.startsWith("http") && /\.pdf/i.test(trimmed);
+    const isXml = !isInvoice;
 
-    const resultDiv = document.getElementById("invoiceResult");
-    const link = document.getElementById("invoiceLink");
-    const filename = document.getElementById("invoiceFilename");
+    // hide both result cards before showing the right one
+    document.getElementById("invoiceResult").classList.remove("visible");
+    document.getElementById("xmlResult").classList.remove("visible");
 
-    link.href = invoiceUrl.trim();
-    const match = invoiceUrl.match(/\/([^/?]+\.pdf)/i);
-    filename.textContent = match ? match[1] : "invoice.pdf";
+    if (isXml) {
+      const pre = document.getElementById("xmlContent");
+      pre.textContent = trimmed;
+      const xmlDiv = document.getElementById("xmlResult");
+      void xmlDiv.offsetWidth;
+      xmlDiv.classList.add("visible");
+      xmlDiv.scrollIntoView({ behavior: "smooth", block: "center" });
+      showToast("Order processed! XML response received.", false);
+    } else {
+      const resultDiv = document.getElementById("invoiceResult");
+      const link = document.getElementById("invoiceLink");
+      const filename = document.getElementById("invoiceFilename");
 
-    resultDiv.classList.remove("visible");
-    void resultDiv.offsetWidth;
-    resultDiv.classList.add("visible");
-    resultDiv.scrollIntoView({ behavior: "smooth", block: "center" });
+      link.href = trimmed;
+      const match = trimmed.match(/\/([^/?]+\.pdf)/i);
+      filename.textContent = match ? match[1] : "invoice.pdf";
+
+      void resultDiv.offsetWidth;
+      resultDiv.classList.add("visible");
+      resultDiv.scrollIntoView({ behavior: "smooth", block: "center" });
+      showToast("Order processed! Invoice ready.", false);
+    }
 
     orderPlaced = true;
-    showToast("Order processed! Invoice ready.", false);
   } catch (err) {
     showToast("Failed to send order: " + err.message, true);
   } finally {
@@ -635,10 +780,35 @@ async function buy() {
   }
 }
 
+async function checkDb() {
+  if (!lastPoNumber) return;
+  try {
+    const resp = await fetch(`/api/orders/${lastPoNumber}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const found = data.count > 0;
+
+    document.querySelectorAll(".db-status").forEach(el => {
+      const checkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+      const xIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+      el.innerHTML = found
+        ? `${checkIcon} Record found (Invoice ${lastPoNumber})`
+        : `${xIcon} No record found (Invoice ${lastPoNumber})`;
+      el.className = "db-status " + (found ? "found" : "not-found");
+      el.style.display = "inline-flex";
+    });
+  } catch (err) {
+    showToast("Database check failed: " + err.message, true);
+  }
+}
+
 function newOrder() {
   catalog.forEach(item => item.qty = 0);
   orderPlaced = false;
+  lastPoNumber = null;
   document.getElementById("invoiceResult").classList.remove("visible");
+  document.getElementById("xmlResult").classList.remove("visible");
+  document.querySelectorAll(".db-status").forEach(el => { el.style.display = "none"; });
   render();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }

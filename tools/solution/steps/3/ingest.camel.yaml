@@ -117,3 +117,21 @@
         - setHeader:
             name: Content-Type
             constant: application/json
+
+- route:
+    id: check-order
+    from:
+      uri: platform-http
+      parameters:
+        path: /api/orders/{poNumber}
+      steps:
+        - to:
+            uri: sql
+            parameters:
+              query: select count(*) from invoices where id = :#${header.poNumber}
+        - setBody:
+            simple:
+              expression: '{"poNumber": "${header.poNumber}", "count": ${body[0][count]}}'
+        - setHeader:
+            name: Content-Type
+            constant: application/json
