@@ -105,3 +105,15 @@
               overrideEndpoint: true
               region: us-east-1
 
+- route:
+    id: config
+    from:
+      uri: platform-http
+      parameters:
+        path: /api/config
+      steps:
+        - setBody:
+            constant: '{"supportUrl": "{{support.url}}"}'
+        - setHeader:
+            name: Content-Type
+            constant: application/json

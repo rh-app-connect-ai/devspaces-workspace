@@ -1,8 +1,6 @@
 //DEPS com.vladsch.flexmark:flexmark-all:0.64.8
 //DEPS com.itextpdf:html2pdf:6.1.0
-
 //DEPS com.itextpdf:itext7-core:9.1.0@pom
-
 
 import org.apache.camel.BindToRegistry;
 import org.apache.camel.Exchange;
@@ -36,13 +34,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 
-public class x12 extends RouteBuilder {
+public class PdfRenderer extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
         // Routes are loaded from YAML files
     }
-
 
 
     @BindToRegistry(lazy=true)
@@ -140,12 +137,13 @@ public class x12 extends RouteBuilder {
 
                 String html = css + markdown;
 
-                System.out.println("HTML:\n"+html);
+                // System.out.println("HTML:\n"+html);
 
                 ByteArrayOutputStream os = new ByteArrayOutputStream();
 
                 HtmlConverter.convertToPdf(html, os);
 
+                exchange.getIn().setHeader("CamelAwsS3ContentType", "application/pdf");
                 
                 exchange.getIn().setBody(addRectangleToPdf(os.toByteArray()));
                 // exchange.getIn().setBody(os);
@@ -244,6 +242,4 @@ public class x12 extends RouteBuilder {
         canvas.rectangle(stripe.getX(), stripe.getY(), stripe.getWidth(), stripe.getHeight());
         canvas.fill();
     }
-
-
 }

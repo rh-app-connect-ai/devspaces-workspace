@@ -13,9 +13,8 @@
               expression: .text
               resultType: String
         - setHeaders:
-            id: setHeaders-3420
             description: set system prompt
-            disabled: false
+            disabled: true
             headers:
               - language:
                   expression: resource:system.message
@@ -25,31 +24,21 @@
                 simple:
                   expression: "1"
         - step:
-            id: step-9559
             description: "To do: Agent"
             steps:
-              - to:
-                  id: to-1056
-                  uri: langchain4j-agent
-                  parameters:
-                    agentId: myagent
-                    agent: "#myagent"
-                    tags: all
-        - log:
-            id: log-1512
-            message: Agent response:\n${body}
+              - setBody:
+                  description: Dummy response
+                  simple:
+                    expression: |-
+                      {
+                         "text": "Hello World"
+                      }
         - to:
-            id: to-4252
-            uri: log
-            parameters:
-              loggerName: InfoLogger
-              showAll: true
-        - to:
-            id: to-1223
             description: to rocketchat
             uri: direct
             parameters:
               name: to-rocketchat
+
 - route:
     id: tool-get-pdf
     description: Gets the PDF url of an invoice

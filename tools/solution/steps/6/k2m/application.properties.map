@@ -1,0 +1,3 @@
+# Matrix credentials
+matrix.token=matrix_token
+matrix.room=matrix_room

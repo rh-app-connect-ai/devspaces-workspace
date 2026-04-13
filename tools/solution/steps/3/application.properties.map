@@ -10,3 +10,11 @@ spring.datasource.password=db_password
 camel.component.aws2-s3.accessKey=s3_access_key
 camel.component.aws2-s3.secretKey=s3_secret_key
 camel.component.aws2-s3.uriEndpointOverride=s3_endpoint
+
+
+
+
+
+
+# Customer support chat URL
+support.url=matrix_url

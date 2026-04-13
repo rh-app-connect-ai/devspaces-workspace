@@ -5,6 +5,7 @@
 
     <xsl:template match="/">
 
+        <div style="position: relative; float: right; margin-top: 20px; margin-right: 20px; background-color: rgba(255, 0, 0, 0.7); color: white; padding: 5px 20px; font-weight: bold; transform: rotate(15deg); font-size: 14px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">Amended</div>
 
 <div style="display: flex; justify-content: flex-start; align-items: flex-start; width: 100%; max-width: 1200px; margin: 0 auto; gap: 0px;">
     <div style="flex: 0 0 100%;">

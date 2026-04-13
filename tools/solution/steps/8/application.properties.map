@@ -1,5 +1,29 @@
 
 
+# Datasource credentials
+forage.jdbc.username=db_username
+forage.jdbc.password=db_password
+
+# S3 configuration
+camel.component.aws2-s3.accessKey=s3_access_key
+camel.component.aws2-s3.secretKey=s3_secret_key
+camel.component.aws2-s3.uriEndpointOverride=s3_endpoint
+
+# S3 presigner
+s3.presigner.access-key=s3_access_key
+s3.presigner.secret-key=s3_secret_key
+s3.presigner.uri=s3_endpoint
+
+
+
+# Model access
+forage.myagent.agent.base.url=maas_url
+forage.myagent.agent.api.key=maas_key
+
+
+
+
+
 
 
 
@@ -9,4 +33,13 @@
 
 
 # Model access
+forage.amend.agent.base.url=maas_url
+forage.amend.agent.api.key=maas_key
 
+# Helpdesk credentials
+helpdesk.url=helpdesk_url
+helpdesk.username=helpdesk_username
+helpdesk.password=helpdesk_password
+helpdesk.group.id=helpdesk_group_id
+helpdesk.type.id.issue=helpdesk_type_id_issue
+helpdesk.priority.id.normal=helpdesk_priority_id_normal

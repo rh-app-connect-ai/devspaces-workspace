@@ -3,7 +3,7 @@
 3 Ingest purchase orders - done
 4 Define the 'k2r' flow: Kafka to RocketChat
 5 Define the 'k2r' flow: Kafka to RocketChat - done
-6 Create an AI assistant for support agents
-7 Create an AI assistant for support agents - done
-8 Apply token usage policies with Connectivity Link
-9 RESERVED - 4 chat flows
+6 Complete Message Hub solution (all 4 flows)
+7 Create an AI assistant for support agents
+8 Create an AI assistant for support agents - done
+9 Apply token usage policies with Connectivity Link
