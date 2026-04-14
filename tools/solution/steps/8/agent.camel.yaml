@@ -76,7 +76,6 @@
     id: get-pdf-url
     description: Retrieves the PDF url of an invoice
     from:
-      id: from-1873
       uri: direct
       parameters:
         name: get-pdf-url
@@ -89,17 +88,13 @@
             parameters:
               amazonS3Presigner: "#presigner"
               autoCreateBucket: true
-              bucketNameOrArn: invoices
+              bucketNameOrArn: "{{s3.bucket}}"
               forcePathStyle: true
               keyName: ${variable.filename}
               operation: createDownloadLink
               overrideEndpoint: true
               region: us-east-1
-        - setBody:
-            simple:
-              expression: ${replace('4566','4566/invoices')}
         - log:
-            id: log-2643-4075
             message: "link: ${body}"
 - route:
     id: to-rocketchat
@@ -329,7 +324,7 @@
             uri: aws2-s3
             parameters:
               autoCreateBucket: true
-              bucketNameOrArn: invoices
+              bucketNameOrArn: "{{s3.bucket}}"
               forcePathStyle: true
               keyName: invoice_${header.id}.pdf
               overrideEndpoint: true
