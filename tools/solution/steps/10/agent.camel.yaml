@@ -1,20 +1,3 @@
-- onException:
-    exception:
-      - dev.langchain4j.exception.HttpException
-    handled:
-      constant: "true"
-    steps:
-      - log:
-          message: "LLM call failed: ${exception.message}"
-      - setBody:
-          simple:
-            expression: ${exception.message}
-      - marshal:
-          json: {}
-      - setBody:
-          jq:
-            expression: '{"text": .}'
-            resultType: String
 - route:
     id: rocketchat-to-agent
     description: RocketChat to Agent
@@ -29,55 +12,38 @@
             jq:
               expression: .text
               resultType: String
-        - choice:
-            when:
-              - simple:
-                  expression: ${body} contains 'invoice' || ${body} contains 'Invoice' || ${body} contains 'ticket' || ${body} contains 'Ticket' || ${body} contains 'pdf' || ${body} contains 'PDF' || ${body} contains 'amend' || ${body} contains 'Amend'
-                steps:
-                  - setHeaders:
-                      id: setHeaders-3420
-                      description: set system prompt
-                      disabled: false
-                      headers:
-                        - language:
-                            expression: resource:system.message
-                            language: simple
-                          name: CamelLangChain4jAgentSystemMessage
-                        - name: CamelLangChain4jAgentMemoryId
-                          simple:
-                            expression: "1"
-                  - step:
-                      id: step-9559
-                      description: "To do: Agent"
-                      steps:
-                        - to:
-                            id: to-1056
-                            uri: langchain4j-agent
-                            parameters:
-                              agentId: myagent
-                              agent: "#myagent"
-                              tags: all
-            otherwise:
-              steps:
-                - setHeader:
-                    name: CamelLangChain4jAgentSystemMessage
-                    constant:
-                      expression: /no_think
-                - to:
-                    uri: langchain4j-agent
-                    parameters:
-                      agentId: rogue
-                      agent: "#rogue"
-                      tags: rogue-internal
-                - log:
-                    message: "Rogue response: ${body}"
-                - marshal:
-                    description: escape text to JSON string
-                    json: {}
-                - setBody:
-                    description: wrap as JSON for rocketchat
-                    simple:
-                      expression: '{"text": ${body}}'
+        - setHeaders:
+            id: setHeaders-3420
+            description: set system prompt
+            disabled: false
+            headers:
+              - language:
+                  expression: resource:system.message
+                  language: simple
+                name: CamelLangChain4jAgentSystemMessage
+              - name: CamelLangChain4jAgentMemoryId
+                simple:
+                  expression: "1"
+        - step:
+            id: step-9559
+            description: "To do: Agent"
+            steps:
+              - to:
+                  id: to-1056
+                  uri: langchain4j-agent
+                  parameters:
+                    agentId: myagent
+                    agent: "#myagent"
+                    tags: all
+        - log:
+            id: log-1512
+            message: Agent response:\n${body}
+        - to:
+            id: to-4252
+            uri: log
+            parameters:
+              loggerName: InfoLogger
+              showAll: true
         - to:
             id: to-1223
             description: to rocketchat
@@ -110,6 +76,7 @@
     id: get-pdf-url
     description: Retrieves the PDF url of an invoice
     from:
+      id: from-1873
       uri: direct
       parameters:
         name: get-pdf-url
@@ -122,13 +89,17 @@
             parameters:
               amazonS3Presigner: "#presigner"
               autoCreateBucket: true
-              bucketNameOrArn: "{{s3.bucket}}"
+              bucketNameOrArn: invoices
               forcePathStyle: true
               keyName: ${variable.filename}
               operation: createDownloadLink
               overrideEndpoint: true
               region: us-east-1
+        - setBody:
+            simple:
+              expression: ${replace('4566','4566/invoices')}
         - log:
+            id: log-2643-4075
             message: "link: ${body}"
 - route:
     id: to-rocketchat
@@ -339,6 +310,51 @@
             message: Ticket created
             description: Log result
 - route:
+    id: tool-writing-assistant
+    description: Writing assistant for drafting emails and summarizing conversations
+    from:
+      uri: langchain4j-tools
+      parameters:
+        description: Helps draft emails and summarize customer conversations
+        parameter.prompt: string
+        tags: all
+        toolId: writingAssistant
+      steps:
+        - doTry:
+            steps:
+              - setBody:
+                  simple:
+                    expression: ${header.prompt}
+              - convertBodyTo:
+                  type: String
+              - setHeader:
+                  name: CamelLangChain4jAgentSystemMessage
+                  constant:
+                    expression: /no_think
+              - to:
+                  uri: langchain4j-agent
+                  parameters:
+                    agentId: scribe
+                    agent: "#scribe"
+                    tags: scribe-internal
+            doCatch:
+              - exception:
+                  - dev.langchain4j.exception.AuthenticationException
+                steps:
+                  - log:
+                      message: "Writing assistant auth error: ${exception.message}"
+                  - setBody:
+                      constant:
+                        expression: "ERROR: Authentication failed. Invalid or missing API Key."
+              - exception:
+                  - dev.langchain4j.exception.HttpException
+                steps:
+                  - log:
+                      message: "Writing assistant error: ${exception.message}"
+                  - setBody:
+                      simple:
+                        expression: "ERROR: ${exception.message}"
+- route:
     id: store-pdf-s3
     from:
       uri: direct
@@ -358,7 +374,7 @@
             uri: aws2-s3
             parameters:
               autoCreateBucket: true
-              bucketNameOrArn: "{{s3.bucket}}"
+              bucketNameOrArn: invoices
               forcePathStyle: true
               keyName: invoice_${header.id}.pdf
               overrideEndpoint: true
