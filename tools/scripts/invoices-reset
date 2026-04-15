@@ -1,0 +1,37 @@
+#!/bin/bash
+# Reset lab data: truncate invoices table, re-insert default record,
+# clear S3 bucket, and re-upload default invoice PDF.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# --- Load credentials from lab-config ---
+CACHE="/tmp/lab-config.cache"
+if [ ! -f "$CACHE" ]; then
+  echo "Loading lab-config from cluster..."
+  NS=$(oc project -q)
+  oc get secret lab-config -n "$NS" -o jsonpath='{.data.config}' | base64 -d > "$CACHE"
+fi
+
+get_val() { grep "^${1}=" "$CACHE" | cut -d'=' -f2-; }
+
+DB_USER=$(get_val db_username)
+DB_PASS=$(get_val db_password)
+S3_ACCESS=$(get_val s3_access_key)
+S3_SECRET=$(get_val s3_secret_key)
+S3_ENDPOINT=$(get_val s3_endpoint)
+
+echo "User: $DB_USER"
+
+# --- Ensure pip matches the Python we'll use ---
+PYTHON=$(pip --version | sed 's/.*(python \([0-9.]*\)).*/python\1/')
+pip install -q psycopg2-binary boto3 || true
+
+# --- Run reset ---
+$PYTHON "${SCRIPT_DIR}/lib/invoices_reset.py" \
+  --db-user "$DB_USER" \
+  --db-pass "$DB_PASS" \
+  --s3-access "$S3_ACCESS" \
+  --s3-secret "$S3_SECRET" \
+  --s3-endpoint "$S3_ENDPOINT" \
+  --bucket "$DB_USER"
