@@ -13,9 +13,9 @@ if [ $# -lt 2 ]; then
   exit 1
 fi
 
-QUERY="$1"
-HOST="${2%%:*}"
-PORT="${2##*:}"
+HOST="${1%%:*}"
+PORT="${1##*:}"
+QUERY="$2"
 
 echo -e "${YELLOW}Connecting to ${HOST}:${PORT}...${RESET}"
 
