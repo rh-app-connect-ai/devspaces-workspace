@@ -17,10 +17,10 @@ HOST="${1%%:*}"
 PORT="${1##*:}"
 QUERY="$2"
 
-echo -e "${YELLOW}Connecting to ${HOST}:${PORT}...${RESET}"
+echo -e "${YELLOW}Connecting to ${HOST}:${PORT} (timeout: 5s)...${RESET}"
 
 # --- Check connectivity ---
-if ! bash -c "echo > /dev/tcp/${HOST}/${PORT}" 2>/dev/null; then
+if ! timeout 5 bash -c "echo > /dev/tcp/${HOST}/${PORT}" 2>/dev/null; then
   echo ""
   echo -e "${RED}ERROR: Cannot connect to ${HOST}:${PORT}${RESET}"
   echo ""
