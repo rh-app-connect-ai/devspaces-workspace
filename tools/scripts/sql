@@ -1,0 +1,81 @@
+#!/bin/bash
+# Run a SQL query against a PostgreSQL database.
+# Usage: sql "SELECT * FROM invoices" postgres:5432
+set -euo pipefail
+
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+RESET="\033[0m"
+
+if [ $# -lt 2 ]; then
+  echo -e "${YELLOW}Usage:${RESET} sql \"SELECT * FROM invoices\" host:port"
+  exit 1
+fi
+
+QUERY="$1"
+HOST="${2%%:*}"
+PORT="${2##*:}"
+
+echo -e "${YELLOW}Connecting to ${HOST}:${PORT}...${RESET}"
+
+# --- Check connectivity ---
+if ! bash -c "echo > /dev/tcp/${HOST}/${PORT}" 2>/dev/null; then
+  echo ""
+  echo -e "${RED}ERROR: Cannot connect to ${HOST}:${PORT}${RESET}"
+  echo ""
+  exit 1
+fi
+
+# --- Load credentials from lab-config ---
+CACHE="/tmp/lab-config.cache"
+if [ ! -f "$CACHE" ]; then
+  NS=$(oc project -q)
+  oc get secret lab-config -n "$NS" -o jsonpath='{.data.config}' | base64 -d > "$CACHE"
+fi
+
+get_val() { grep "^${1}=" "$CACHE" | cut -d'=' -f2-; }
+
+DB_USER=$(get_val db_username)
+DB_PASS=$(get_val db_password)
+
+# --- Ensure psycopg2 is installed ---
+PYTHON=$(pip --version | sed 's/.*(python \([0-9.]*\)).*/python\1/')
+pip install -q psycopg2-binary 2>/dev/null || true
+
+# --- Run query ---
+$PYTHON -c "
+import psycopg2
+
+conn = psycopg2.connect(
+    host='${HOST}', port=${PORT}, dbname='labdb',
+    user='${DB_USER}', password='${DB_PASS}',
+    options='-c search_path=${DB_USER}',
+    connect_timeout=5
+)
+cur = conn.cursor()
+cur.execute('''${QUERY}''')
+
+if cur.description:
+    headers = [d[0] for d in cur.description]
+    rows = cur.fetchall()
+
+    widths = [len(h) for h in headers]
+    for row in rows:
+        for i, val in enumerate(row):
+            widths[i] = max(widths[i], len(str(val)))
+
+    header_line = ' | '.join(h.ljust(w) for h, w in zip(headers, widths))
+    print('\033[0;32m' + header_line)
+    print('-+-'.join('-' * w for w in widths))
+
+    for row in rows:
+        print(' | '.join(str(v).ljust(w) for v, w in zip(row, widths)))
+
+    print(f'\n({len(rows)} row(s))' + '\033[0m')
+else:
+    print('\033[0;32mQuery executed successfully.\033[0m')
+
+cur.close()
+conn.close()
+"
