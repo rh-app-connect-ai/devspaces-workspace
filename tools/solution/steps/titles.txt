@@ -7,4 +7,3 @@
 7 Create an AI assistant for support agents
 8 Create an AI assistant for support agents - done
 9 Apply token usage policies with Connectivity Link
-10 Experiment with Rocket Chat: Apply token usage policies with Connectivity Link
