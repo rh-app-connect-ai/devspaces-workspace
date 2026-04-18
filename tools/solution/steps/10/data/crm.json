@@ -1,0 +1,13 @@
+{
+  "customer_id": "ACT-99284",
+  "account_info": {
+    "membership_level": "Premier Plus",
+    "status": "Active",
+    "region": "EMEA",
+    "tenure_years": 4.2
+  },
+  "contact_preferences": {
+    "channel": "Email",
+    "language": "EN-GB"
+  }
+}

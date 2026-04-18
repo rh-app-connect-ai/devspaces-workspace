@@ -1,0 +1,28 @@
+{
+  "invoice_audit_trail": {
+    "invoice_id": "INV-0042",
+    "logs": [
+      {
+        "timestamp": "2026-04-01T09:00:00Z",
+        "action": "AUTO_GENERATE",
+        "details": "System generated base invoice. Total: $1,250.00. VAT: 20%. Status: DRAFT."
+      },
+      {
+        "timestamp": "2026-04-05T14:22:15Z",
+        "action": "MANUAL_EDIT",
+        "user": "Agent_Smith",
+        "details": "Modified line item 4 (Service Fee). Changed $50.00 to $0.00 per customer dispute chat."
+      },
+      {
+        "timestamp": "2026-04-10T11:05:44Z",
+        "action": "RECALCULATE_TAX",
+        "details": "System detected mismatch between subtotal and VAT code. Applied correction: +$4.12. Status: FINALIZED."
+      },
+      {
+        "timestamp": "2026-04-15T08:30:10Z",
+        "action": "PDF_REGENERATION",
+        "details": "Agent triggered manual PDF rebuild to reflect tax corrections. Version 4.1 generated."
+      }
+    ]
+  }
+}

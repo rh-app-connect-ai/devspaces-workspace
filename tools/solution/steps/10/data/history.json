@@ -1,0 +1,22 @@
+{
+  "interaction_history": [
+    {
+      "date": "2026-03-10",
+      "type": "Chat",
+      "summary": "Inquiry about bulk shipping discounts. Resolved with coupon code SHIP26.",
+      "sentiment": "Positive"
+    },
+    {
+      "date": "2026-04-01",
+      "type": "Email",
+      "summary": "Dispute over Invoice #INV-0038. Manual adjustment made by Agent_ID_44.",
+      "sentiment": "Neutral"
+    },
+    {
+      "date": "2026-04-12",
+      "type": "Phone",
+      "summary": "Customer expressed frustration regarding repeated billing errors. Escalated to manager.",
+      "sentiment": "Negative"
+    }
+  ]
+}

@@ -1,0 +1,367 @@
+- route:
+    id: rocketchat-to-agent
+    description: RocketChat to Agent
+    from:
+      description: RocketChat
+      uri: platform-http
+      parameters:
+        path: /ai-support
+      steps:
+        - setBody:
+            description: get text
+            jq:
+              expression: .text
+              resultType: String
+        - setHeaders:
+            id: setHeaders-3420
+            description: set system prompt
+            disabled: false
+            headers:
+              - language:
+                  expression: resource:prompt/system.message
+                  language: simple
+                name: CamelLangChain4jAgentSystemMessage
+              - name: CamelLangChain4jAgentMemoryId
+                simple:
+                  expression: "1"
+        - step:
+            id: step-9559
+            description: "To do: Agent"
+            steps:
+              - to:
+                  id: to-1056
+                  uri: langchain4j-agent
+                  parameters:
+                    agentId: myagent
+                    agent: "#myagent"
+                    tags: all
+        - log:
+            id: log-1512
+            message: Agent response:\n${body}
+        - to:
+            id: to-4252
+            uri: log
+            parameters:
+              loggerName: InfoLogger
+              showAll: true
+        - to:
+            id: to-1223
+            description: to rocketchat
+            uri: direct
+            parameters:
+              name: to-rocketchat
+- route:
+    id: tool-get-pdf
+    description: Gets the PDF url of an invoice
+    from:
+      uri: langchain4j-tools
+      parameters:
+        description: Get the PDF url of an invoice
+        parameter.id: string
+        tags: all
+        toolId: getInvoicePDFurl
+      steps:
+        - setVariable:
+            description: set file name
+            expression:
+              simple:
+                expression: invoice_${header.id}.pdf
+            name: filename
+        - to:
+            id: to-1810
+            uri: direct
+            parameters:
+              name: get-pdf-url
+- route:
+    id: get-pdf-url
+    description: Retrieves the PDF url of an invoice
+    from:
+      uri: direct
+      parameters:
+        name: get-pdf-url
+      steps:
+        - removeHeaders:
+            disabled: false
+            pattern: "*"
+        - to:
+            uri: aws2-s3
+            parameters:
+              amazonS3Presigner: "#presigner"
+              autoCreateBucket: true
+              bucketNameOrArn: "{{s3.bucket}}"
+              forcePathStyle: true
+              keyName: ${variable.filename}
+              operation: createDownloadLink
+              overrideEndpoint: true
+              region: us-east-1
+        - log:
+            message: "link: ${body}"
+- route:
+    id: to-rocketchat
+    description: to-rocketchat
+    from:
+      id: from-1791
+      uri: direct
+      parameters:
+        name: to-rocketchat
+      steps:
+        - unmarshal:
+            disabled: false
+            json: {}
+        - marshal:
+            disabled: false
+            json: {}
+- route:
+    id: tool-amend-invoice
+    description: Amend invoice
+    from:
+      uri: langchain4j-tools
+      parameters:
+        description: Amends an invoice
+        parameter.id: string
+        parameter.prompt: string
+        tags: all
+        toolId: amendInvoice
+      steps:
+        - step:
+            id: step-3889
+            description: normal flow
+            steps:
+              - setVariable:
+                  description: set file name
+                  expression:
+                    simple:
+                      expression: invoice_${header.id}.pdf
+                  name: filename
+              - to:
+                  id: to-1810-2640
+                  uri: direct
+                  parameters:
+                    name: get-invoice-data
+              - setBody:
+                  id: setBody-4119
+                  simple:
+                    expression: |-
+                      ${header.prompt}
+
+                      ${body}
+              - setHeaders:
+                  id: setHeaders-3420-2534
+                  description: set system prompt
+                  disabled: false
+                  headers:
+                    - language:
+                        expression: resource:prompt/amend.message
+                        language: simple
+                      name: CamelLangChain4jAgentSystemMessage
+                    - name: CamelLangChain4jAgentMemoryId
+                      simple:
+                        expression: "1"
+              - to:
+                  id: to-2739
+                  uri: langchain4j-agent
+                  parameters:
+                    agentId: amend
+                    agent: "#amend"
+              - setBody:
+                  id: setBody-1842
+                  simple:
+                    expression: ${body.trim()}
+                  disabled: true
+              - setVariable:
+                  id: setVariable-3622
+                  name: summary
+                  xpath:
+                    expression: /Amendment/Summary/text()
+                    saxon: true
+                  description: get summary
+              - setBody:
+                  id: setBody-1842-3654
+                  xpath:
+                    expression: /Amendment/Content/Invoice
+                    saxon: true
+              - convertBodyTo:
+                  id: convertBodyTo-1103
+                  type: String
+              - log:
+                  id: log-1389
+                  message: "summary: ${variable.summary}\\n${body}"
+              - to:
+                  uri: sql
+                  parameters:
+                    query: >-
+                      INSERT INTO invoices (id, data) VALUES
+                      (:#${header.id},:#${body})
+
+                      ON CONFLICT (id)
+
+                      DO UPDATE SET data = EXCLUDED.data
+              - to:
+                  id: to-1542
+                  uri: direct
+                  parameters:
+                    name: store-pdf-s3
+                  disabled: false
+              - setBody:
+                  id: setBody-3423
+                  simple:
+                    expression: >-
+                      {
+                        "status":"done",
+                        "summary":  "${variable.summary}",
+                        "actions":"1) Inform the user with 'The database records have been updated'. 2) Provide summary. 3) Ask if they'd like to see the new PDF invoice."
+                      }
+            disabled: false
+- route:
+    id: get-invoice-data
+    description: get-invoice-data
+    from:
+      id: from-1847
+      uri: direct
+      parameters:
+        name: get-invoice-data
+      steps:
+        - convertHeaderTo:
+            id: convertHeaderTo-9760
+            name: id
+            type: String
+        - to:
+            id: to-1530
+            uri: sql
+            parameters:
+              query: select data from invoices where id = :#${header.id}
+        - setBody:
+            id: setBody-1160
+            simple:
+              expression: ${body[0]}
+            disabled: true
+        - unmarshal:
+            id: unmarshal-1434
+            jacksonXml: {}
+            disabled: true
+        - marshal:
+            id: marshal-4078
+            jacksonXml: {}
+            disabled: true
+        - log:
+            id: log-1096
+            message: ${body}
+- route:
+    id: tool-get-data
+    description: Get invoice data
+    from:
+      id: tool-get-data
+      uri: langchain4j-tools
+      parameters:
+        description: Obtains data about an invoice from the database
+        tags: db
+        toolId: getInvoiceData
+        parameter.id: string
+      steps:
+        - to:
+            id: to-1810-2640-3288
+            uri: direct
+            parameters:
+              name: get-invoice-data
+- route:
+    id: tool-create-ticket
+    description: Creates a ticket in HelpDesk
+    from:
+      id: tool-create-ticket
+      uri: langchain4j-tools
+      parameters:
+        description: Creates an issue or ticket in the HelpDesk system
+        parameter.subject: string
+        parameter.content: string
+        parameter."invoiceUrl: (optional) string
+        tags: all
+        toolId: createTicket
+      steps:
+        - setBody:
+            simple: >-
+              {
+                "subject": "${header.subject}",
+                "issue": "${header.content}<br><br>[📄 View Invoice PDF](${header.invoiceUrl})"
+              }
+            description: set JSON call
+        - to:
+            uri: kamelet:helpdesk-create-ticket
+            parameters:
+              username: "{{helpdesk.username}}"
+              password: "{{helpdesk.password}}"
+              groupId: "{{helpdesk.group.id}}"
+              typeId: "{{helpdesk.type.id.issue}}"
+              priorityId: "{{helpdesk.priority.id.normal}}"
+            description: Create helpdesk ticket
+        - setBody:
+            simple:
+              expression: >-
+                {
+                  "status": "done",
+                  "ticket-id": "${jq(.ticket.uid)}",
+                  "actions": "1) Do not share the ticket with the customer. 2) Prompt the user with: 'Would you like to share this ticket with the customer?"
+                }
+        - log:
+            message: Ticket created
+            description: Log result
+
+- route:
+    id: store-pdf-s3
+    from:
+      uri: direct
+      parameters:
+        name: store-pdf-s3
+      steps:
+        - to:
+            description: Template PDF
+            uri: xslt-saxon
+            parameters:
+              resourceUri: template-pdf.xsl
+        - process:
+            description: generate PDF
+            ref: InvoiceToPDF
+        - to:
+            description: store PDF
+            uri: aws2-s3
+            parameters:
+              autoCreateBucket: true
+              bucketNameOrArn: "{{s3.bucket}}"
+              forcePathStyle: true
+              keyName: invoice_${header.id}.pdf
+              overrideEndpoint: true
+              region: us-east-1
+- route:
+    id: tool-share-ticket
+    description: Shares a ticket with customer
+    from:
+      id: tool-share-ticket
+      uri: langchain4j-tools
+      parameters:
+        description: Shares a ticket created in HelpDesk with customer
+        parameter.ticketId: string
+        tags: all
+        toolId: shareTicket
+      steps:
+        - log:
+            message: ${body}
+        - setBody:
+            simple:
+              expression: >-
+                {
+                  "timesptamp":"${date:now}",
+                  "source":"rocketchat",
+                  "user":"ai",
+                  "text":"<br><br><a href=\"{{helpdesk.url}}\">📄 Ticket <b>#${header.ticketId}</b></a> created.<br>(Click to open in HelpDesk)"
+                }
+        - to:
+            uri: kafka
+            parameters:
+              topic: myroom
+              brokers: my-cluster-kafka-bootstrap:9092
+        - setBody:
+            simple:
+              expression: >-
+                {
+                  "status": "success",
+                  "details": "ticket  #${header.ticketId} was sent to customer channel with link to HelpDesk"
+                }

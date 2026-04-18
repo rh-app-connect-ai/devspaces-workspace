@@ -1,0 +1,9 @@
+{
+  "active_ticket": {
+    "id": "TKT-2026-X8",
+    "subject": "Recurring Tax Volatility on INV-0042",
+    "priority": "High",
+    "opened_at": "2026-04-16T14:30:00Z",
+    "initial_summary": "Customer claims the VAT calculation on the modified invoice does not match the previously promised discount rate."
+  }
+}
