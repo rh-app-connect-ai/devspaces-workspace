@@ -1,0 +1,172 @@
+#!/bin/bash
+# Reset the demo environment to its initial state.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+RESET="\033[0m"
+
+USERNAME=$(oc whoami 2>/dev/null) || {
+  echo -e "${RED}ERROR: Not logged in. Run 'oc login' first.${RESET}"
+  exit 1
+}
+
+USER_NUM="${USERNAME#user}"
+RC_ROOMS=("room${USER_NUM}" "ai-support${USER_NUM}")
+
+CACHE="/tmp/lab-config.cache"
+if [ ! -f "$CACHE" ]; then
+  oc get secret lab-config -n "${USERNAME}-devspaces" -o jsonpath='{.data.config}' | base64 -d > "$CACHE"
+fi
+HELPDESK_URL=$(grep '^helpdesk_url=' "$CACHE" | cut -d'=' -f2-)
+APPS_DOMAIN="${HELPDESK_URL#https://helpdesk-helpdesk.}"
+RC_URL="https://rocketchat-rocketchat.${APPS_DOMAIN}"
+
+# --- Step 1: Scale down Camel applications ---
+echo -e "${GREEN}Scaling down Camel applications...${RESET}"
+oc scale deployment m2k r2k k2m k2r --replicas=0 > /dev/null
+
+# --- Step 2: Reset invoices (DB + S3) — must run before SI teardown ---
+echo -e "${GREEN}Resetting invoices...${RESET}"
+if ! "${SCRIPT_DIR}/invoices-reset" > /dev/null 2>&1; then
+  echo -e "${YELLOW}  WARNING: Invoice reset failed — skipping${RESET}"
+fi
+
+# --- Step 3: Delete Kuadrant rate limit policy ---
+echo -e "${GREEN}Removing API rate limit policy...${RESET}"
+oc delete tokenratelimitpolicy openai-token-limits --ignore-not-found > /dev/null
+
+# --- Step 4: Reset Service Interconnect ---
+echo -e "${GREEN}Resetting Service Interconnect...${RESET}"
+"${SCRIPT_DIR}/si-reset" > /dev/null 2>&1
+
+# --- Step 5: Prune RocketChat channel (requires admin) ---
+echo ""
+RC_PASS=""
+printf "To prune RocketChat channels, enter admin password: "
+while IFS= read -r -s -n1 char; do
+  if [ -z "$char" ]; then
+    break
+  elif [ "$char" = $'\x7f' ] || [ "$char" = $'\b' ]; then
+    if [ -n "$RC_PASS" ]; then
+      RC_PASS="${RC_PASS%?}"
+      printf '\b \b'
+    fi
+  else
+    RC_PASS="${RC_PASS}${char}"
+    printf '*'
+  fi
+done
+echo ""
+
+LOGIN=$(curl -s -X POST -H "Content-Type: application/json" \
+  -d "{\"user\":\"rcadmin\",\"password\":\"${RC_PASS}\"}" \
+  "${RC_URL}/api/v1/login")
+
+if [ "$(echo "$LOGIN" | jq -r '.status')" != "success" ]; then
+  echo -e "${RED}ERROR: RocketChat login failed${RESET}"
+  exit 1
+fi
+
+AUTH_TOKEN=$(echo "$LOGIN" | jq -r '.data.authToken')
+USER_ID=$(echo "$LOGIN" | jq -r '.data.userId')
+
+for ROOM_NAME in "${RC_ROOMS[@]}"; do
+  ROOM_INFO=$(curl -s -H "X-Auth-Token: ${AUTH_TOKEN}" -H "X-User-Id: ${USER_ID}" \
+    "${RC_URL}/api/v1/groups.info?roomName=${ROOM_NAME}")
+
+  ROOM_ID=$(echo "$ROOM_INFO" | jq -r '.group._id')
+  if [ "$ROOM_ID" = "null" ] || [ -z "$ROOM_ID" ]; then
+    echo -e "${YELLOW}  WARNING: Channel ${ROOM_NAME} not found — skipping${RESET}"
+    continue
+  fi
+
+  RESULT=$(curl -s -X POST \
+    -H "X-Auth-Token: ${AUTH_TOKEN}" \
+    -H "X-User-Id: ${USER_ID}" \
+    -H "Content-Type: application/json" \
+    -d "{\"roomId\":\"${ROOM_ID}\",\"latest\":\"2099-01-01T00:00:00.000Z\",\"oldest\":\"2000-01-01T00:00:00.000Z\"}" \
+    "${RC_URL}/api/v1/rooms.cleanHistory")
+
+  if [ "$(echo "$RESULT" | jq -r '.success')" = "true" ]; then
+    COUNT=$(echo "$RESULT" | jq -r '.count')
+    echo -e "${GREEN}Pruned ${COUNT} messages from ${ROOM_NAME}${RESET}"
+  else
+    echo -e "${RED}ERROR: $(echo "$RESULT" | jq -r '.error')${RESET}"
+    exit 1
+  fi
+done
+
+# --- Step 6: Purge Matrix room history (requires admin) ---
+MATRIX_URL="https://synapse-matrix.${APPS_DOMAIN}"
+MATRIX_ROOM=$(grep '^matrix_room=' "$CACHE" | cut -d'=' -f2-)
+
+echo ""
+MX_PASS=""
+printf "To purge Matrix room, enter admin password: "
+while IFS= read -r -s -n1 char; do
+  if [ -z "$char" ]; then
+    break
+  elif [ "$char" = $'\x7f' ] || [ "$char" = $'\b' ]; then
+    if [ -n "$MX_PASS" ]; then
+      MX_PASS="${MX_PASS%?}"
+      printf '\b \b'
+    fi
+  else
+    MX_PASS="${MX_PASS}${char}"
+    printf '*'
+  fi
+done
+echo ""
+
+MX_LOGIN=$(curl -s -X POST -H "Content-Type: application/json" \
+  -d "{\"type\":\"m.login.password\",\"user\":\"admin\",\"password\":\"${MX_PASS}\"}" \
+  "${MATRIX_URL}/_matrix/client/r0/login")
+
+MX_TOKEN=$(echo "$MX_LOGIN" | jq -r '.access_token')
+if [ "$MX_TOKEN" = "null" ] || [ -z "$MX_TOKEN" ]; then
+  echo -e "${RED}ERROR: Matrix login failed${RESET}"
+  exit 1
+fi
+
+ENCODED_ROOM=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${MATRIX_ROOM}'))")
+TS=$(($(date +%s) * 1000))
+
+PURGE=$(curl -s -X POST -H "Authorization: Bearer ${MX_TOKEN}" -H "Content-Type: application/json" \
+  -d "{\"purge_up_to_ts\": ${TS}, \"delete_local_events\": true}" \
+  "${MATRIX_URL}/_synapse/admin/v1/purge_history/${ENCODED_ROOM}")
+
+PURGE_ID=$(echo "$PURGE" | jq -r '.purge_id')
+if [ "$PURGE_ID" = "null" ] || [ -z "$PURGE_ID" ]; then
+  echo -e "${RED}ERROR: Matrix purge failed${RESET}"
+  exit 1
+fi
+
+while true; do
+  STATUS=$(curl -s -H "Authorization: Bearer ${MX_TOKEN}" \
+    "${MATRIX_URL}/_synapse/admin/v1/purge_history_status/${PURGE_ID}" | jq -r '.status')
+  [ "$STATUS" = "complete" ] && break
+  [ "$STATUS" = "failed" ] && { echo -e "${RED}ERROR: Matrix purge failed${RESET}"; exit 1; }
+  sleep 1
+done
+
+# Redact the last remaining message
+EVENT_ID=$(curl -s -H "Authorization: Bearer ${MX_TOKEN}" \
+  "${MATRIX_URL}/_matrix/client/v3/rooms/${MATRIX_ROOM}/messages?dir=b&limit=1" | jq -r '.chunk[0].event_id // empty')
+
+if [ -n "$EVENT_ID" ]; then
+  ENCODED_EVENT=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${EVENT_ID}'))")
+  curl -s -X PUT -H "Authorization: Bearer ${MX_TOKEN}" -H "Content-Type: application/json" \
+    -d '{}' "${MATRIX_URL}/_matrix/client/v3/rooms/${ENCODED_ROOM}/redact/${ENCODED_EVENT}/$(date +%s)" > /dev/null
+fi
+
+echo -e "${GREEN}Purged Matrix room${RESET}"
+
+echo ""
+echo -e "${GREEN}Demo reset complete${RESET}"
+
+# --- Show Service Interconnect status ---
+"${SCRIPT_DIR}/si-status"
