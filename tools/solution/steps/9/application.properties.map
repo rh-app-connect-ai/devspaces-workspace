@@ -34,13 +34,9 @@ forage.myagent.agent.api.key=maas_key
 
 
 
-
 # Model access
 forage.amend.agent.base.url=maas_url
 forage.amend.agent.api.key=maas_key
-
-#Model access
-forage.scribe.agent.base.url=internal_ai_http_route_url
 
 # Helpdesk credentials
 helpdesk.url=helpdesk_url
@@ -49,3 +45,16 @@ helpdesk.password=helpdesk_password
 helpdesk.group.id=helpdesk_group_id
 helpdesk.type.id.issue=helpdesk_type_id_issue
 helpdesk.priority.id.normal=helpdesk_priority_id_normal
+
+
+
+# Gold agent - model configuration
+forage.profile-gold.agent.base.url=internal_ai_http_route_url
+
+
+
+
+
+
+# Silver agent - model configuration
+forage.profile-silver.agent.base.url=internal_ai_http_route_url

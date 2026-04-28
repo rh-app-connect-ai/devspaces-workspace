@@ -1,0 +1,140 @@
+- route:
+    id: tool-customer-profile
+    from:
+      id: tool-customer-profile
+      uri: langchain4j-tools
+      parameters:
+        toolId: getCustomerProfile
+        tags: all
+        description: Gets customer profile
+        parameter.invoiceid: string
+      steps:
+        - step:
+            steps:
+              - to:
+                  uri: direct
+                  parameters:
+                    name: gold-with-fallback
+            description: Try Gold tier (with fallback)
+        - log:
+            message: End Customer Profile
+- route:
+    from:
+      uri: direct
+      parameters:
+        name: gold-with-fallback
+      steps:
+        - circuitBreaker:
+            steps:
+              - to:
+                  uri: direct
+                  parameters:
+                    name: prepare-gold
+                  description: get gold data
+              - to:
+                  uri: langchain4j-agent
+                  parameters:
+                    agentId: profile-gold
+            onFallback:
+              steps:
+                - log:
+                    message: "GOLD error from endpoint: ${exception.message}"
+                - to:
+                    uri: direct
+                    parameters:
+                      name: silver-with-fallback
+    id: gold-with-fallback
+    description: Gold (with fallback)
+- route:
+    from:
+      uri: direct
+      parameters:
+        name: silver-with-fallback
+      steps:
+        - circuitBreaker:
+            steps:
+              - to:
+                  uri: direct
+                  parameters:
+                    name: prepare-silver
+                  description: get silver data
+              - to:
+                  uri: langchain4j-agent
+                  parameters:
+                    agentId: profile-silver
+            onFallback:
+              steps:
+                - log:
+                    message: "1 SILVER error from endpoint: ${exception.message}"
+                - setBody:
+                    simple:
+                      expression: "Could not obtain profile, reason: ${exception.message}"
+                    description: get error
+    id: silver-with-fallback
+    description: Silver (with fallback)
+- route:
+    from:
+      uri: direct
+      parameters:
+        name: prepare-gold
+      steps:
+        - setBody:
+            language:
+              language: simple
+              expression: |-
+                Analyse the customer profile based on the inputs below:
+
+                ${load(data/crm.json)}
+
+                ${load(data/tickets.json)}
+
+                ${load(data/history.json)}
+
+                ${load(data/audit.json)}
+            description: set mock data
+        - removeHeaders:
+            pattern: "*"
+            description: clean headers
+        - setHeaders:
+            description: set system prompt
+            disabled: false
+            headers:
+              - language:
+                  expression: resource:prompt/tier-gold.message
+                  language: simple
+                name: CamelLangChain4jAgentSystemMessage
+        - log:
+            message: "GOLD inpouts: ${body}"
+    id: prepare-gold
+    description: Get Data for Gold Analysis
+- route:
+    from:
+      uri: direct
+      parameters:
+        name: prepare-silver
+      steps:
+        - setBody:
+            language:
+              language: simple
+              expression: |-
+                Analyse the customer profile based on the inputs below:
+
+                ${load(data/crm.json)}
+
+                ${load(data/tickets.json)}
+            description: set mock data
+        - removeHeaders:
+            pattern: "*"
+            description: clean headers
+        - setHeaders:
+            description: set system prompt
+            disabled: false
+            headers:
+              - language:
+                  expression: resource:prompt/tier-silver.message
+                  language: simple
+                name: CamelLangChain4jAgentSystemMessage
+        - log:
+            message: "GOLD inpouts: ${body}"
+    id: prepare-silver
+    description: Get Data for Silver Analysis

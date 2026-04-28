@@ -50,7 +50,7 @@ helpdesk.priority.id.normal=helpdesk_priority_id_normal
 
 # Gold agent - model configuration
 forage.profile-gold.agent.base.url=internal_ai_http_route_url
-
+forage.profile-gold.agent.api.key=kuadrant_pro_api_key
 
 
 
@@ -58,3 +58,4 @@ forage.profile-gold.agent.base.url=internal_ai_http_route_url
 
 # Silver agent - model configuration
 forage.profile-silver.agent.base.url=internal_ai_http_route_url
+forage.profile-silver.agent.api.key=kuadrant_lite_api_key

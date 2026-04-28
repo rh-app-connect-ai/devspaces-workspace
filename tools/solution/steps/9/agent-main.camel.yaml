@@ -18,7 +18,7 @@
             disabled: false
             headers:
               - language:
-                  expression: resource:system.message
+                  expression: resource:prompt/system.message
                   language: simple
                 name: CamelLangChain4jAgentSystemMessage
               - name: CamelLangChain4jAgentMemoryId
@@ -151,7 +151,7 @@
                   disabled: false
                   headers:
                     - language:
-                        expression: resource:prompt.amend
+                        expression: resource:prompt/amend.message
                         language: simple
                       name: CamelLangChain4jAgentSystemMessage
                     - name: CamelLangChain4jAgentMemoryId
@@ -304,51 +304,7 @@
         - log:
             message: Ticket created
             description: Log result
-- route:
-    id: tool-writing-assistant
-    description: Writing assistant for drafting emails and summarizing conversations
-    from:
-      uri: langchain4j-tools
-      parameters:
-        description: Helps draft emails and summarize customer conversations
-        parameter.prompt: string
-        tags: all
-        toolId: writingAssistant
-      steps:
-        - doTry:
-            steps:
-              - setBody:
-                  simple:
-                    expression: ${header.prompt}
-              - convertBodyTo:
-                  type: String
-              - setHeader:
-                  name: CamelLangChain4jAgentSystemMessage
-                  constant:
-                    expression: /no_think
-              - to:
-                  uri: langchain4j-agent
-                  parameters:
-                    agentId: scribe
-                    agent: "#scribe"
-                    tags: scribe-internal
-            doCatch:
-              - exception:
-                  - dev.langchain4j.exception.AuthenticationException
-                steps:
-                  - log:
-                      message: "Writing assistant auth error: ${exception.message}"
-                  - setBody:
-                      constant:
-                        expression: "ERROR: Authentication failed. Invalid or missing API Key."
-              - exception:
-                  - dev.langchain4j.exception.HttpException
-                steps:
-                  - log:
-                      message: "Writing assistant error: ${exception.message}"
-                  - setBody:
-                      simple:
-                        expression: "ERROR: ${exception.message}"
+
 - route:
     id: store-pdf-s3
     from:
