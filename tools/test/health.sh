@@ -1,105 +1,217 @@
 #!/bin/bash
 set -euo pipefail
 
-# set -x
-
-# Load common variables
 source /projects/workshop/tools/test/config.sh
 
-# Set expected number of users
+VERBOSE=false
+if [ "${1:-}" = "-v" ]; then
+  VERBOSE=true
+fi
+
 EXPECTED=$(oc get secret htpasswd -n openshift-config -o jsonpath='{.data.htpasswd}' | base64 -d | grep user | wc -l)
 
-echo "=== Kafka broker pods (only the real brokers) ==="
-oc get pods --all-namespaces \
-  -l strimzi.io/kind=Kafka \
-  -o custom-columns=NS:.metadata.namespace,\
+FAILURES=0
+WARNINGS=0
+
+pass() {
+  printf "\033[0;32m✓\033[0m %-22s %s\n" "$1" "$2"
+}
+
+fail() {
+  printf "\033[0;31m✗\033[0m %-22s %s\n" "$1" "$2"
+  FAILURES=$((FAILURES + 1))
+}
+
+warning() {
+  printf "\033[0;33m~\033[0m %-22s %s\n" "$1" "$2"
+  WARNINGS=$((WARNINGS + 1))
+}
+
+log() {
+  if $VERBOSE; then
+    echo "$@"
+  fi
+}
+
+logn() {
+  if $VERBOSE; then
+    echo -e "$@"
+  fi
+}
+
+# --- 1. Kafka ---
+logn "\n=== 1. Checking Kafka brokers ==="
+if $VERBOSE; then
+  oc get pods --all-namespaces \
+    -l strimzi.io/kind=Kafka \
+    -o custom-columns=NS:.metadata.namespace,\
 CLUSTER:.metadata.labels.'strimzi.io/cluster',\
 POD:.metadata.name,\
 READY:.status.containerStatuses[*].ready,\
 PHASE:.status.phase \
-  --sort-by=.metadata.namespace
+    --sort-by=.metadata.namespace | sort -V
+fi
 
-# Count ONLY the real broker pods that are fully Ready
 READY_COUNT=$(oc get pods --all-namespaces \
   -l strimzi.io/kind=Kafka \
   -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{.status.phase}{"\t"}{.status.containerStatuses[*].ready}{"\n"}{end}' \
   | grep -v entity-operator | grep -v controller \
-  | grep Running | grep -c '^.*true$')
-
-echo -e "\n=== 1. Kafka Summary ==="
-echo "Expected broker pods   : $EXPECTED"
-echo "Actually ready brokers : $READY_COUNT"
+  | grep Running | grep -c '^.*true$' || true)
 
 if [ "$READY_COUNT" -eq "$EXPECTED" ]; then
-  info "All $EXPECTED Kafka brokers are healthy and running"
+  pass "Kafka" "$READY_COUNT/$EXPECTED brokers ready"
 else
-  die "ERROR: Only $READY_COUNT/$EXPECTED brokers are ready!"
+  fail "Kafka" "$READY_COUNT/$EXPECTED brokers ready"
 fi
 
+# --- 2. Camel deployments ---
+logn "\n=== 2. Checking Camel deployments ==="
+CAMEL_APPS="m2k r2k k2m k2r"
+CAMEL_FAIL=0
+CAMEL_TOTAL=$((EXPECTED * 4))
+CAMEL_FOUND=0
 
+for i in $(seq 1 $EXPECTED); do
+  NS="user${i}-devspaces"
+  MISSING=""
+  FOUND=""
+  for APP in $CAMEL_APPS; do
+    if oc get deployment "$APP" -n "$NS" --no-headers >/dev/null 2>&1; then
+      FOUND="$FOUND $APP"
+      CAMEL_FOUND=$((CAMEL_FOUND + 1))
+    else
+      MISSING="$MISSING $APP"
+    fi
+  done
+  if $VERBOSE; then
+    if [ -n "$MISSING" ]; then
+      printf "  user%-4s \033[0;31mMISSING:%s\033[0m\n" "${i}" "${MISSING}"
+    else
+      printf "  user%-4s \033[0;32mOK\033[0m –%s\n" "${i}" "${FOUND}"
+    fi
+  fi
+  if [ -n "$MISSING" ]; then
+    CAMEL_FAIL=1
+  fi
+done
 
-echo -e "\n=== 2. Checking Matrix deployment (namespace matrix) ==="
-oc -n matrix get pods --selector "app in (element,synapse)" --no-headers
+if [ "$CAMEL_FAIL" -eq 0 ]; then
+  pass "Camel deployments" "$CAMEL_FOUND/$CAMEL_TOTAL across $EXPECTED users"
+else
+  fail "Camel deployments" "$CAMEL_FOUND/$CAMEL_TOTAL across $EXPECTED users"
+fi
+
+# --- 3. Matrix ---
+logn "\n=== 3. Checking Matrix deployment ==="
+if $VERBOSE; then
+  oc -n matrix get pods --selector "app in (element,synapse)" --no-headers
+fi
 
 MATRIX_OK=$(oc -n matrix get pods --selector "app in (element,synapse)" --no-headers \
   -o jsonpath='{range .items[*]}{.status.phase}{"\t"}{.status.containerStatuses[0].ready}{"\n"}{end}' \
-  | grep -c "Running	true")
+  | grep -c "Running	true" || true)
 
 if [ "$MATRIX_OK" -eq 2 ]; then
-  info "Matrix check PASSED – both element and synapse are 1/1 Running"
+  pass "Matrix" "element + synapse running"
 else
-  die "Matrix check FAILED – one or both pods are not healthy"
+  fail "Matrix" "$MATRIX_OK/2 pods running"
 fi
 
-
-
-echo -e "\n=== 3. Checking RocketChat deployment (namespace rocketchat) ==="
-oc -n rocketchat get pods --selector "app in (mongodb,rocketchat)" --no-headers
+# --- 4. RocketChat ---
+logn "\n=== 4. Checking RocketChat deployment ==="
+if $VERBOSE; then
+  oc -n rocketchat get pods --selector "app in (mongodb,rocketchat)" --no-headers
+fi
 
 ROCKETCHAT_OK=$(oc -n rocketchat get pods --selector "app in (mongodb,rocketchat)" --no-headers \
   -o jsonpath='{range .items[*]}{.status.phase}{"\t"}{.status.containerStatuses[0].ready}{"\n"}{end}' \
-  | grep -c "Running	true")
+  | grep -c "Running	true" || true)
 
 if [ "$ROCKETCHAT_OK" -eq 2 ]; then
-  info "RocketChat check PASSED – both mongodb and srocketchatynapse are 1/1 Running"
+  pass "RocketChat" "mongodb + rocketchat running"
 else
-  die "RocketChat check FAILED – one or both pods are not healthy"
+  fail "RocketChat" "$ROCKETCHAT_OK/2 pods running"
 fi
 
+# --- 5. Helpdesk ---
+logn "\n=== 5. Checking Helpdesk deployment ==="
+if $VERBOSE; then
+  oc -n helpdesk get pods --selector "app in (helpdesk,helpdesk-db)" --no-headers
+fi
 
-echo -e "\n=== 4. Checking DocServer (namespace showroom) ==="
-oc -n showroom get pods --selector "app in (docserver)" --no-headers
+HELPDESK_OK=$(oc -n helpdesk get pods --selector "app in (helpdesk,helpdesk-db)" --no-headers \
+  -o jsonpath='{range .items[*]}{.status.phase}{"\t"}{.status.containerStatuses[0].ready}{"\n"}{end}' \
+  | grep -c "Running	true" || true)
+
+if [ "$HELPDESK_OK" -eq 2 ]; then
+  pass "Helpdesk" "helpdesk + helpdesk-db running"
+else
+  fail "Helpdesk" "$HELPDESK_OK/2 pods running"
+fi
+
+# --- 6. Showroom ---
+logn "\n=== 6. Checking Showroom deployment ==="
+if $VERBOSE; then
+  oc -n showroom get pods --selector "app.kubernetes.io/name=showroom" --no-headers
+  oc -n showroom get pods --selector "app=docs-proxy" --no-headers
+fi
+
+SHOWROOM_POD=$(oc -n showroom get pods --selector "app.kubernetes.io/name=showroom" --no-headers \
+  -o jsonpath='{range .items[*]}{.status.phase}{"\t"}{.status.containerStatuses[0].ready}{"\n"}{end}' \
+  | grep -c "Running	true" || true)
+PROXY_POD=$(oc -n showroom get pods --selector "app=docs-proxy" --no-headers \
+  -o jsonpath='{range .items[*]}{.status.phase}{"\t"}{.status.containerStatuses[0].ready}{"\n"}{end}' \
+  | grep -c "Running	true" || true)
+SHOWROOM_OK=$((SHOWROOM_POD + PROXY_POD))
+
+if [ "$SHOWROOM_OK" -eq 2 ]; then
+  pass "Showroom" "showroom + docs-proxy running"
+else
+  fail "Showroom" "$SHOWROOM_OK/2 pods running"
+fi
+
+# --- 7. DocServer ---
+logn "\n=== 7. Checking DocServer deployment ==="
+if $VERBOSE; then
+  oc -n showroom get pods --selector "app in (docserver)" --no-headers
+fi
 
 DOCSERVER_OK=$(oc -n showroom get pods --selector "app in (docserver)" --no-headers \
   -o jsonpath='{range .items[*]}{.status.phase}{"\t"}{.status.containerStatuses[0].ready}{"\n"}{end}' \
-  | grep -c "Running	true")
+  | grep -c "Running	true" || true)
 
 if [ "$DOCSERVER_OK" -eq 1 ]; then
-  info "DocServer check PASSED – both mongodb and srocketchatynapse are 1/1 Running"
+  pass "DocServer" "docserver running"
 else
-  die "DocServer check FAILED – one or both pods are not healthy"
+  fail "DocServer" "not running"
 fi
 
-
-echo "=== Checking DevWorkspaces (expecting exactly $EXPECTED Running) ==="
-oc get dw --all-namespaces \
-  -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,PHASE:.status.phase,URL:.status.mainUrl --no-headers --sort-by=.metadata.namespace
-
-# Count total DevWorkspaces
-TOTAL=$(oc get dw --all-namespaces --no-headers | wc -l)
-
-# Count how many are actually Running
-RUNNING=$(oc get dw --all-namespaces --no-headers | grep -c ' Running')
-
-if [ "$TOTAL" -ne "$EXPECTED" ]; then
-  die "DevWorkspaces COUNT FAILED: found $TOTAL, expected $EXPECTED"
+# --- 8. DevWorkspaces ---
+logn "\n=== 8. Checking DevWorkspaces ==="
+if $VERBOSE; then
+  oc get dw --all-namespaces \
+    -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,PHASE:.status.phase,URL:.status.mainUrl --no-headers --sort-by=.metadata.namespace | sort -V
 fi
 
-if [ "$RUNNING" -ne "$EXPECTED" ]; then
-  warn "DevWorkspaces HEALTH FAILED: only $RUNNING/$TOTAL are Running" 
+TOTAL=$(oc get dw --all-namespaces --no-headers | wc -l | tr -d ' ')
+RUNNING=$(oc get dw --all-namespaces --no-headers | grep -c ' Running' || true)
+
+if [ "$TOTAL" -eq "$EXPECTED" ] && [ "$RUNNING" -eq "$EXPECTED" ]; then
+  pass "DevWorkspaces" "$RUNNING/$EXPECTED running"
+elif [ "$TOTAL" -ne "$EXPECTED" ]; then
+  fail "DevWorkspaces" "found $TOTAL, expected $EXPECTED"
+else
+  warning "DevWorkspaces" "$RUNNING/$EXPECTED running"
 fi
 
-echo "DevWorkspaces HEALTH & COUNT PASSED: $RUNNING/$EXPECTED are Running"
-
-echo
-info "All healthy!"
+# --- Summary ---
+echo ""
+if [ "$FAILURES" -eq 0 ]; then
+  if [ "$WARNINGS" -eq 0 ]; then
+    info "All healthy!"
+  else
+    info "Success with warnings ($WARNINGS)"
+  fi
+else
+  die "$FAILURES check(s) failed"
+fi
