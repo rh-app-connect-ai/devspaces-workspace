@@ -1,0 +1,10 @@
+
+
+
+# S3 access
+s3.access.key=s3_access_key
+s3.secret.key=s3_secret_key
+s3.endpoint=s3_endpoint
+
+# S3 configuration
+s3.bucket=s3_bucket

@@ -1,0 +1,116 @@
+apiVersion: camel.apache.org/v1alpha1
+kind: Kamelet
+metadata:
+  name: helpdesk-create-ticket
+  annotations:
+    camel.apache.org/kamelet.support.level: "Stable"
+    camel.apache.org/catalog.version: "main-SNAPSHOT"
+    camel.apache.org/kamelet.group: "Helpdesk"
+  labels:
+    camel.apache.org/kamelet.type: "sink"
+spec:
+  definition:
+    title: "Helpdesk Create Ticket"
+    description: |-
+      Creates a helpdesk ticket. Expects a JSON body with "subject" and "issue" fields.
+    required:
+      - username
+      - password
+      - groupId
+      - typeId
+      - priorityId
+    type: object
+    properties:
+      username:
+        title: Username
+        description: The Helpdesk username
+        type: string
+      password:
+        title: Password
+        description: The Helpdesk password
+        type: string
+      groupId:
+        title: Group ID
+        description: The Helpdesk group ID for ticket assignment
+        type: string
+      typeId:
+        title: Type ID
+        description: The ticket type ID
+        type: string
+      priorityId:
+        title: Priority ID
+        description: The ticket priority ID
+        type: string
+  types:
+    in:
+      mediaType: application/json
+    out:
+      mediaType: application/json
+  dependencies:
+    - "camel:kamelet"
+    - "camel:http"
+    - "camel:jq"
+  template:
+    from:
+      uri: "kamelet:source"
+      steps:
+        - setVariable:
+            name: ticketSubject
+            jq:
+              expression: ".subject"
+              resultType: "java.lang.String"
+            description: Extract subject
+        - setVariable:
+            name: ticketIssue
+            jq:
+              expression: ".issue"
+              resultType: "java.lang.String"
+            description: Extract issue
+        - removeHeaders:
+            pattern: "*"
+            description: Clean headers
+        - setHeaders:
+            headers:
+              - name: Content-Type
+                constant: application/json
+              - name: CamelHttpMethod
+                constant: POST
+            description: Set login headers
+        - setBody:
+            simple: >-
+              {"username":"{{username}}","password":"{{password}}"}
+            description: Login credentials
+        - to:
+            uri: "http://helpdesk.helpdesk.svc:8118/api/v1/login"
+            description: Login to Helpdesk
+        - setVariable:
+            name: accessToken
+            jq:
+              expression: ".accessToken"
+              resultType: "java.lang.String"
+            description: Extract token
+        - removeHeaders:
+            pattern: "*"
+            description: Clean headers
+        - setHeaders:
+            headers:
+              - name: accesstoken
+                simple: "${variable.accessToken}"
+              - name: Content-Type
+                constant: application/json
+              - name: CamelHttpMethod
+                constant: POST
+            description: Set ticket headers
+        - setBody:
+            simple: >-
+              {
+                "subject": "${variable.ticketSubject}",
+                "issue": "${variable.ticketIssue}",
+                "type": "{{typeId}}",
+                "group": "{{groupId}}",
+                "priority": "{{priorityId}}"
+              }
+            description: Ticket payload
+        - to:
+            uri: "http://helpdesk.helpdesk.svc:8118/api/v1/tickets/create"
+            description: Create ticket

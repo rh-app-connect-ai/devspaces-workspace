@@ -4,7 +4,9 @@
 4 Define the 'k2r' flow: Kafka to RocketChat
 5 Define the 'k2r' flow: Kafka to RocketChat - done
 6 Complete Message Hub solution (all 4 flows)
-7 Create an AI assistant for support agents
-8 Create an AI assistant for support agents - done
+7 Create an AI assistant for support agents (MCP enabled)
+8 Create an AI assistant for support agents (MCP enabled) - done
 9 Apply policies with Connectivity Link (empty keys)
 10 Apply policies with Connectivity Link (with keys)
+11 [deprecated] Create an AI assistant for support agents
+12 [deprecated] Create an AI assistant for support agents - done
