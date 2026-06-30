@@ -230,19 +230,6 @@
             uri: sql
             parameters:
               query: select data from invoices where id = :#${header.id}
-        - setBody:
-            id: setBody-1160
-            simple:
-              expression: ${body[0]}
-            disabled: true
-        - unmarshal:
-            id: unmarshal-1434
-            jacksonXml: {}
-            disabled: true
-        - marshal:
-            id: marshal-4078
-            jacksonXml: {}
-            disabled: true
         - log:
             id: log-1096
             message: ${body}

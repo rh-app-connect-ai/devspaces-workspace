@@ -3,8 +3,8 @@
 
 
 # Datasource credentials
-spring.datasource.username=db_username
-spring.datasource.password=db_password
+forage.jdbc.username=db_username
+forage.jdbc.password=db_password
 
 # S3 access
 camel.component.aws2-s3.accessKey=s3_access_key
